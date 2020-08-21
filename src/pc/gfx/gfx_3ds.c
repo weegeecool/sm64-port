@@ -9,14 +9,13 @@ C3D_RenderTarget *gTarget;
 C3D_RenderTarget *gTargetRight;
 float gSliderLevel;
 
-struct gfx_configuration gfx_config = {false, false};
+struct gfx_configuration gfx_config = {true, false}; // aa on, 800px off
 
 Gfx3DSMode gGfx3DSMode;
 PrintConsole gConsole;
 
-bool menu_mode;
-
-u8 n3ds_model = 0;
+static bool menu_mode;
+static u8 n3ds_model = 0;
 
 static bool checkN3DS()
 {

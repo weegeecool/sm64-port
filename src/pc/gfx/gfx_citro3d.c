@@ -12,6 +12,8 @@
 #include "gfx_rendering_api.h"
 
 #define VERTEX_SHADER_SIZE 10
+#define TEXTURE_POOL_SIZE 4096
+
 
 static DVLB_s* sVShaderDvlb;
 static shaderProgram_s sShaderProgram;
@@ -22,42 +24,32 @@ extern const u32 shader_shbin_size;
 
 struct ShaderProgram {
     uint32_t shader_id;
-    u32 opengl_program_id;
+    uint32_t program_id;
     uint8_t num_inputs;
-    bool used_textures[2];
     uint8_t num_floats;
-    u32 attrib_locations[7];
-    uint8_t attrib_sizes[7];
-    uint8_t num_attribs;
+    bool used_textures[2];
 };
 
-static struct ShaderProgram sShaderProgramPool[64];
+static struct ShaderProgram sShaderProgramPool[32];
 static uint8_t sShaderProgramPoolSize;
 
-static int sCurShader = 0;
-
-static C3D_Tex sTexturePool[4096];
-static float sTexturePoolScaleS[4096];
-static float sTexturePoolScaleT[4096];
-static int sTextureIndex;
-static int sCurTex = 0;
-
+static u32 sTexBuf[16 * 1024] __attribute__((aligned(32)));
+static C3D_Tex sTexturePool[TEXTURE_POOL_SIZE];
+static float sTexturePoolScaleS[TEXTURE_POOL_SIZE];
+static float sTexturePoolScaleT[TEXTURE_POOL_SIZE];
+static u32 sTextureIndex;
 static int sTexUnits[2];
 
-static bool gfx_citro3d_z_is_from_0_to_1(void)
-{
-    return true;
-}
+static int sCurTex = 0;
+static int sCurShader = 0;
 
 static int sVtxUnitSize = 0;
+static int sBufIdx = 0;
 
 static bool sDepthTestOn = false;
 static bool sDepthUpdateOn = true;
 static bool sDepthDecal = false;
-
 static bool sUseBlend;
-
-static int sBufIdx = 0;
 
 static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx modelView, projLeft, projRight;
@@ -69,12 +61,14 @@ static const float focalLen = 0.75f;
 static const float fov = 54.0f*M_TAU/360.0f;
 #endif
 
+static bool gfx_citro3d_z_is_from_0_to_1(void)
+{
+    return true;
+}
+
 static void gfx_citro3d_vertex_array_set_attribs(struct ShaderProgram *prg)
 {
-    int unitSize = 0;
-    for (int i = 0; i < prg->num_attribs; i++)
-        unitSize += prg->attrib_sizes[i];
-    sVtxUnitSize = unitSize;
+    sVtxUnitSize = prg->num_floats;
 }
 
 static void gfx_citro3d_unload_shader(UNUSED struct ShaderProgram *old_prg)
@@ -104,55 +98,16 @@ static GPU_TEVSRC getTevSrc(int input, bool swapInput01)
     return GPU_CONSTANT;
 }
 
-static void updateShader(bool swapInput01)
+static void update_shader(bool swapInput01)
 {
     struct ShaderProgram* new_prg = &sShaderProgramPool[sCurShader];
-
     u32 shader_id = new_prg->shader_id;
 
-    uint8_t c[2][4];
-    for (int i = 0; i < 4; i++)
-    {
-        c[0][i] = (shader_id >> (i * 3)) & 7;
-        c[1][i] = (shader_id >> (12 + i * 3)) & 7;
-    }
-    bool opt_alpha = (shader_id & SHADER_OPT_ALPHA) != 0;
-    // bool opt_fog = (shader_id & SHADER_OPT_FOG) != 0;
-    bool opt_texture_edge = (shader_id & SHADER_OPT_TEXTURE_EDGE) != 0;
-    // bool used_textures[2] = {0, 0};
-    int num_inputs = 0;
-    for (int i = 0; i < 2; i++)
-    {
-        for (int j = 0; j < 4; j++)
-        {
-            if (c[i][j] >= SHADER_INPUT_1 && c[i][j] <= SHADER_INPUT_4)
-            {
-                if (c[i][j] > num_inputs)
-                {
-                    num_inputs = c[i][j];
-                }
-            }
-            // if (c[i][j] == SHADER_TEXEL0 || c[i][j] == SHADER_TEXEL0A)
-            // {
-            //     used_textures[0] = true;
-            // }
-            // if (c[i][j] == SHADER_TEXEL1)
-            // {
-            //     used_textures[1] = true;
-            // }
-        }
-    }
-
-    bool do_single[2] = {c[0][2] == 0, c[1][2] == 0};
-    bool do_multiply[2] = {c[0][1] == 0 && c[0][3] == 0, c[1][1] == 0 && c[1][3] == 0};
-    bool do_mix[2] = {c[0][1] == c[0][3], c[1][1] == c[1][3]};
-    bool color_alpha_same = (shader_id & 0xfff) == ((shader_id >> 12) & 0xfff);
-
-    if (num_inputs >= 3)
-        printf("more than 2!\n");
+    struct CCFeatures cc_features;
+    gfx_cc_get_features(shader_id, &cc_features);
 
     C3D_TexEnv* env = C3D_GetTexEnv(0);
-    if (num_inputs >= 2)
+    if (cc_features.num_inputs == 2)
     {
         C3D_TexEnvInit(env);
         C3D_TexEnvColor(env, 0);
@@ -166,98 +121,105 @@ static void updateShader(bool swapInput01)
     {
         C3D_TexEnvInit(C3D_GetTexEnv(1));
     }
+
     C3D_TexEnvInit(env);
     C3D_TexEnvColor(env, 0);
-    if (!color_alpha_same && opt_alpha)
+    if (cc_features.opt_alpha && !cc_features.color_alpha_same)
     {
-        if (do_single[0])
+        // RGB first
+        if (cc_features.do_single[0])
         {
             C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
-            C3D_TexEnvSrc(env, C3D_RGB, getTevSrc(c[0][3], swapInput01), 0, 0);
-            if (c[0][3] == SHADER_TEXEL0A)
+            C3D_TexEnvSrc(env, C3D_RGB, getTevSrc(cc_features.c[0][3], swapInput01), 0, 0);
+            if (cc_features.c[0][3] == SHADER_TEXEL0A)
                 C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_ALPHA, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR);
             else
                 C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR);
         }
-        else if (do_multiply[0])
+        else if (cc_features.do_multiply[0])
         {
             C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-            C3D_TexEnvSrc(env, C3D_RGB, getTevSrc(c[0][0], swapInput01), getTevSrc(c[0][2], swapInput01), 0);
+            C3D_TexEnvSrc(env, C3D_RGB, getTevSrc(cc_features.c[0][0], swapInput01),
+                                        getTevSrc(cc_features.c[0][2], swapInput01), 0);
             C3D_TexEnvOpRgb(env,
-                c[0][0] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
-                c[0][2] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
+                cc_features.c[0][0] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
+                cc_features.c[0][2] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
                 GPU_TEVOP_RGB_SRC_COLOR);
         }
-        else if (do_mix[0])
+        else if (cc_features.do_mix[0])
         {
             C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
-            C3D_TexEnvSrc(env, C3D_RGB, getTevSrc(c[0][0], swapInput01), getTevSrc(c[0][1], swapInput01), getTevSrc(c[0][2], swapInput01));
+            C3D_TexEnvSrc(env, C3D_RGB, getTevSrc(cc_features.c[0][0], swapInput01),
+                                        getTevSrc(cc_features.c[0][1], swapInput01),
+                                        getTevSrc(cc_features.c[0][2], swapInput01));
             C3D_TexEnvOpRgb(env,
-                c[0][0] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
-                c[0][1] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
-                c[0][2] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR);
+                cc_features.c[0][0] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
+                cc_features.c[0][1] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
+                cc_features.c[0][2] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR);
         }
-        else
-            printf("complex\n");
+        // now Alpha
         C3D_TexEnvOpAlpha(env,  GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
-        if (do_single[1])
+        if (cc_features.do_single[1])
         {
             C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-            C3D_TexEnvSrc(env, C3D_Alpha, getTevSrc(c[1][3], swapInput01), 0, 0);
+            C3D_TexEnvSrc(env, C3D_Alpha, getTevSrc(cc_features.c[1][3], swapInput01), 0, 0);
         }
-        else if (do_multiply[1])
+        else if (cc_features.do_multiply[1])
         {
             C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
-            C3D_TexEnvSrc(env, C3D_Alpha, getTevSrc(c[1][0], swapInput01), getTevSrc(c[1][2], swapInput01), 0);
+            C3D_TexEnvSrc(env, C3D_Alpha, getTevSrc(cc_features.c[1][0], swapInput01),
+                                          getTevSrc(cc_features.c[1][2], swapInput01), 0);
         }
-        else if (do_mix[1])
+        else if (cc_features.do_mix[1])
         {
             C3D_TexEnvFunc(env, C3D_Alpha, GPU_INTERPOLATE);
-            C3D_TexEnvSrc(env, C3D_Alpha, getTevSrc(c[1][0], swapInput01), getTevSrc(c[1][1], swapInput01), getTevSrc(c[1][2], swapInput01));
+            C3D_TexEnvSrc(env, C3D_Alpha, getTevSrc(cc_features.c[1][0], swapInput01),
+                                          getTevSrc(cc_features.c[1][1], swapInput01),
+                                          getTevSrc(cc_features.c[1][2], swapInput01));
         }
-        else
-            printf("complex\n");
     }
     else
     {
+        // RBGA
         C3D_TexEnvOpAlpha(env, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA, GPU_TEVOP_A_SRC_ALPHA);
-        if (do_single[0])
+        if (cc_features.do_single[0])
         {
             C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-            C3D_TexEnvSrc(env, C3D_Both, getTevSrc(c[0][3], swapInput01), 0, 0);
-            if (c[0][3] == SHADER_TEXEL0A)
+            C3D_TexEnvSrc(env, C3D_Both, getTevSrc(cc_features.c[0][3], swapInput01), 0, 0);
+            if (cc_features.c[0][3] == SHADER_TEXEL0A)
                 C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_ALPHA, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR);
             else
                 C3D_TexEnvOpRgb(env, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR);
         }
-        else if (do_multiply[0])
+        else if (cc_features.do_multiply[0])
         {
             C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
-            C3D_TexEnvSrc(env, C3D_Both, getTevSrc(c[0][0], swapInput01), getTevSrc(c[0][2], swapInput01), 0);
+            C3D_TexEnvSrc(env, C3D_Both, getTevSrc(cc_features.c[0][0], swapInput01),
+                                         getTevSrc(cc_features.c[0][2], swapInput01), 0);
             C3D_TexEnvOpRgb(env,
-                c[0][0] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
-                c[0][2] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
+                cc_features.c[0][0] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
+                cc_features.c[0][2] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
                 GPU_TEVOP_RGB_SRC_COLOR);
         }
-        else if (do_mix[0])
+        else if (cc_features.do_mix[0])
         {
             C3D_TexEnvFunc(env, C3D_Both, GPU_INTERPOLATE);
-            C3D_TexEnvSrc(env, C3D_Both, getTevSrc(c[0][0], swapInput01), getTevSrc(c[0][1], swapInput01), getTevSrc(c[0][2], swapInput01));
+            C3D_TexEnvSrc(env, C3D_Both, getTevSrc(cc_features.c[0][0], swapInput01),
+                                         getTevSrc(cc_features.c[0][1], swapInput01),
+                                         getTevSrc(cc_features.c[0][2], swapInput01));
             C3D_TexEnvOpRgb(env,
-                c[0][0] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
-                c[0][1] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
-                c[0][2] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR);
+                cc_features.c[0][0] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
+                cc_features.c[0][1] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR,
+                cc_features.c[0][2] == SHADER_TEXEL0A ? GPU_TEVOP_RGB_SRC_ALPHA : GPU_TEVOP_RGB_SRC_COLOR);
         }
-        else
-            printf("complex\n");
     }
-    if (!opt_alpha)
+    if (!cc_features.opt_alpha)
     {
         C3D_TexEnvColor(env, 0xFF000000);
         C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
         C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
     }
-    if (opt_texture_edge && opt_alpha)
+    if (cc_features.opt_texture_edge && cc_features.opt_alpha)
         C3D_AlphaTest(true, GPU_GREATER, 77);
     else
         C3D_AlphaTest(true, GPU_GREATER, 0);
@@ -265,87 +227,38 @@ static void updateShader(bool swapInput01)
 
 static void gfx_citro3d_load_shader(struct ShaderProgram *new_prg)
 {
-    sCurShader = new_prg->opengl_program_id;
+    sCurShader = new_prg->program_id;
     gfx_citro3d_vertex_array_set_attribs(new_prg);
 
-    updateShader(false);
+    update_shader(false);
 }
 
 static struct ShaderProgram *gfx_citro3d_create_and_load_new_shader(uint32_t shader_id)
 {
-    uint8_t c[2][4];
-    for (int i = 0; i < 4; i++)
-    {
-        c[0][i] = (shader_id >> (i * 3)) & 7;
-        c[1][i] = (shader_id >> (12 + i * 3)) & 7;
-    }
-    bool opt_alpha = (shader_id & SHADER_OPT_ALPHA) != 0;
-    bool opt_fog = (shader_id & SHADER_OPT_FOG) != 0;
-    // bool opt_texture_edge = (shader_id & SHADER_OPT_TEXTURE_EDGE) != 0;
-    bool used_textures[2] = {0, 0};
-    int num_inputs = 0;
-    for (int i = 0; i < 2; i++)
-    {
-        for (int j = 0; j < 4; j++)
-        {
-            if (c[i][j] >= SHADER_INPUT_1 && c[i][j] <= SHADER_INPUT_4)
-            {
-                if (c[i][j] > num_inputs)
-                {
-                    num_inputs = c[i][j];
-                }
-            }
-            if (c[i][j] == SHADER_TEXEL0 || c[i][j] == SHADER_TEXEL0A)
-            {
-                used_textures[0] = true;
-            }
-            if (c[i][j] == SHADER_TEXEL1)
-            {
-                used_textures[1] = true;
-            }
-        }
-    }
-    //bool do_single[2] = {c[0][2] == 0, c[1][2] == 0};
-    //bool do_multiply[2] = {c[0][1] == 0 && c[0][3] == 0, c[1][1] == 0 && c[1][3] == 0};
-    //bool do_mix[2] = {c[0][1] == c[0][3], c[1][1] == c[1][3]};
-    //bool color_alpha_same = (shader_id & 0xfff) == ((shader_id >> 12) & 0xfff);
-
-    // size_t vs_len = 0;
-    // size_t fs_len = 0;
-    size_t num_floats = 4;
-
-    size_t cnt = 0;
+    struct CCFeatures cc_features;
+    gfx_cc_get_features(shader_id, &cc_features);
 
     int id = sShaderProgramPoolSize;
     struct ShaderProgram *prg = &sShaderProgramPool[sShaderProgramPoolSize++];
-    prg->attrib_sizes[cnt] = 4;
-    ++cnt;
 
-    if (used_textures[0] || used_textures[1])
-    {
-        prg->attrib_sizes[cnt] = 2;
-        ++cnt;
-    }
+    prg->num_floats = 4; // vertex position (xyzw)
 
-    if (opt_fog)
+    if (cc_features.used_textures[0] || cc_features.used_textures[1])
     {
-        prg->attrib_sizes[cnt] = 4;
-        ++cnt;
+        prg->num_floats += 2;
     }
-
-    for (int i = 0; i < num_inputs; i++)
+    if (cc_features.opt_fog)
     {
-        prg->attrib_sizes[cnt] = opt_alpha ? 4 : 3;
-        ++cnt;
+        prg->num_floats += 4;
     }
+    prg->num_floats += cc_features.num_inputs * (cc_features.opt_alpha ? 4 : 3);
 
     prg->shader_id = shader_id;
-    prg->opengl_program_id = id;
-    prg->num_inputs = num_inputs;
-    prg->used_textures[0] = used_textures[0];
-    prg->used_textures[1] = used_textures[1];
-    prg->num_floats = num_floats;
-    prg->num_attribs = cnt;
+    prg->program_id = id;
+
+    prg->num_inputs = cc_features.num_inputs;
+    prg->used_textures[0] = cc_features.used_textures[0];
+    prg->used_textures[1] = cc_features.used_textures[1];
 
     gfx_citro3d_load_shader(prg);
 
@@ -373,9 +286,9 @@ static void gfx_citro3d_shader_get_info(struct ShaderProgram *prg, uint8_t *num_
 
 static uint32_t gfx_citro3d_new_texture(void)
 {
-    if (sTextureIndex == 4096)
+    if (sTextureIndex == TEXTURE_POOL_SIZE)
     {
-        printf("Out of texures!");
+        printf("Out of textures!\n");
         return 0;
     }
     return sTextureIndex++;
@@ -387,8 +300,6 @@ static void gfx_citro3d_select_texture(int tile, uint32_t texture_id)
     sCurTex = texture_id;
     sTexUnits[tile] = texture_id;
 }
-
-static u32 sTexBuf[16 * 1024] __attribute__((aligned(32)));
 
 static int sTileOrder[] =
 {
@@ -484,28 +395,28 @@ static void gfx_citro3d_set_sampler_parameters(int tile, bool linear_filter, uin
     C3D_TexSetWrap(&sTexturePool[sTexUnits[tile]], gfx_cm_to_opengl(cms), gfx_cm_to_opengl(cmt));
 }
 
-static void updateDepth()
+static void update_depth()
 {
     C3D_DepthTest(sDepthTestOn, GPU_LEQUAL, sDepthUpdateOn ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-    C3D_DepthMap(true, sDepthDecal ? -1 : -1, sDepthDecal ? -0.001f : 0);
+    C3D_DepthMap(true, -1.0f, sDepthDecal ? -0.001f : 0);
 }
 
 static void gfx_citro3d_set_depth_test(bool depth_test)
 {
     sDepthTestOn = depth_test;
-    updateDepth();
+    update_depth();
 }
 
 static void gfx_citro3d_set_depth_mask(bool z_upd)
 {
     sDepthUpdateOn = z_upd;
-    updateDepth();
+    update_depth();
 }
 
 static void gfx_citro3d_set_zmode_decal(bool zmode_decal)
 {
     sDepthDecal = zmode_decal;
-    updateDepth();
+    update_depth();
 }
 
 static void gfx_citro3d_set_viewport(int x, int y, int width, int height)
@@ -579,9 +490,9 @@ static void renderFog(float buf_vbo[], UNUSED size_t buf_vbo_len, size_t buf_vbo
     int offset = 0;
     float* dst = &((float*)sVboBuffer)[sBufIdx * VERTEX_SHADER_SIZE];
     bool hasTex = sShaderProgramPool[sCurShader].used_textures[0] || sShaderProgramPool[sCurShader].used_textures[1];
-    //bool hasFog = (sShaderProgramPool[sCurShader].shader_id & SHADER_OPT_FOG) != 0;
     for (u32 i = 0; i < 3 * buf_vbo_num_tris; i++)
     {
+        // vertex
         *dst++ = buf_vbo[offset + 1];
         *dst++ = -buf_vbo[offset + 0];
         *dst++ = -buf_vbo[offset + 2];
@@ -589,8 +500,10 @@ static void renderFog(float buf_vbo[], UNUSED size_t buf_vbo_len, size_t buf_vbo
         int vtxOffs = 4;
         if (hasTex)
             vtxOffs += 2;
+        // no texture
         *dst++ = 0;
         *dst++ = 0;
+        // fog rgba
         *dst++ = buf_vbo[offset + vtxOffs++];
         *dst++ = buf_vbo[offset + vtxOffs++];
         *dst++ = buf_vbo[offset + vtxOffs++];
@@ -602,9 +515,9 @@ static void renderFog(float buf_vbo[], UNUSED size_t buf_vbo_len, size_t buf_vbo
     C3D_DrawArrays(GPU_TRIANGLES, sBufIdx, buf_vbo_num_tris * 3);
     sBufIdx += buf_vbo_num_tris * 3;
 
-    updateShader(false);
+    update_shader(false);
     applyBlend();
-    updateDepth();
+    update_depth();
 }
 
 static void renderTwoColorTris(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris)
@@ -654,7 +567,7 @@ static void renderTwoColorTris(float buf_vbo[], size_t buf_vbo_len, size_t buf_v
         offset += sVtxUnitSize;
     }
     offset = 0;
-    updateShader(!color1Constant);
+    update_shader(!color1Constant);
     C3D_TexEnvColor(C3D_GetTexEnv(0), color1Constant ? firstColor1 : firstColor0);
     for (u32 i = 0; i < 3 * buf_vbo_num_tris; i++)
     {
@@ -682,10 +595,7 @@ static void renderTwoColorTris(float buf_vbo[], size_t buf_vbo_len, size_t buf_v
             *dst++ = buf_vbo[offset + vtxOffs++];
             *dst++ = buf_vbo[offset + vtxOffs++];
             *dst++ = buf_vbo[offset + vtxOffs++];
-            if (hasAlpha)
-                *dst++ = buf_vbo[offset + vtxOffs++];
-            else
-                *dst++ = 1.0f;
+            *dst++ = hasAlpha ? buf_vbo[offset + vtxOffs++] : 1.0f;
         }
         else
         {
@@ -749,10 +659,7 @@ static void gfx_citro3d_draw_triangles(float buf_vbo[], size_t buf_vbo_len, size
             *dst++ = buf_vbo[offset + vtxOffs++];
             *dst++ = buf_vbo[offset + vtxOffs++];
             *dst++ = buf_vbo[offset + vtxOffs++];
-            if (hasAlpha)
-                *dst++ = buf_vbo[offset + vtxOffs++];
-            else
-                *dst++ = 1.0f;
+            *dst++ = hasAlpha ? buf_vbo[offset + vtxOffs++] : 1.0f;
         }
         else
         {
