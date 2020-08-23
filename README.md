@@ -102,6 +102,8 @@ git clone https://github.com/mkst/sm64-port.git
 
 cd sm64-port
 
+git checkout 3ds-port
+
 # go and copy the baserom to c:\temp (create that directory in windows explorer)
 cp /mnt/c/temp/baserom.us.z64 .
 
