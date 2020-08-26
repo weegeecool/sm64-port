@@ -157,6 +157,15 @@ static size_t buf_vbo_num_tris;
 static struct GfxWindowManagerAPI *gfx_wapi;
 static struct GfxRenderingAPI *gfx_rapi;
 
+#ifdef TARGET_N3DS
+static bool n64_native_res;
+static void gfx_set_is_hud(bool is_hud)
+{
+    n64_native_res = is_hud;
+    gfx_rapi->set_is_hud(is_hud);
+}
+#endif
+
 #ifdef ENABLE_N3DS_3D_MODE
 static void gfx_set_2d(int mode_2d)
 {
@@ -608,6 +617,10 @@ static void gfx_sp_pop_matrix(uint32_t count) {
 }
 
 static float gfx_adjust_x_for_aspect_ratio(float x) {
+#ifdef TARGET_N3DS
+    if (n64_native_res)
+        return x;
+#endif
     return x * (4.0f / 3.0f) / ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
 }
 
@@ -1599,9 +1612,13 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_SPECIAL_2:
                 gfx_flush();
                 break;
-                
             case G_SPECIAL_4:
                 gfx_set_iod(cmd->words.w1);
+                break;
+#endif
+#ifdef TARGET_N3DS
+            case G_SPECIAL_3:
+                gfx_set_is_hud(cmd->words.w1 == 1);
                 break;
 #endif
         }

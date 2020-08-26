@@ -4798,12 +4798,12 @@ typedef union {
 #define	gDPNoOpTag(pkt, tag)	gDPParam(pkt, G_NOOP, tag)
 #define	gsDPNoOpTag(tag)	gsDPParam(G_NOOP, tag)
 
-#ifdef ENABLE_N3DS_3D_MODE
-#define gDPSet2d(pkt, mode) \
+#ifdef TARGET_N3DS
+#define gDPSetHud(pkt, mode) \
 { \
 	Gfx *_g = (Gfx *)(pkt);	\
 									\
-	_g->words.w0 = _SHIFTL(G_SPECIAL_1, 24, 8); \
+	_g->words.w0 = _SHIFTL(G_SPECIAL_3, 24, 8); \
 	_g->words.w1 = (unsigned int)(mode); \
 }
 #define gDPForceFlush(pkt) \
@@ -4811,6 +4811,15 @@ typedef union {
 	Gfx *_g = (Gfx *)(pkt);	\
 									\
 	_g->words.w0 = _SHIFTL(G_SPECIAL_2, 24, 8); \
+}
+
+#ifdef ENABLE_N3DS_3D_MODE
+#define gDPSet2d(pkt, mode) \
+{ \
+	Gfx *_g = (Gfx *)(pkt);	\
+									\
+	_g->words.w0 = _SHIFTL(G_SPECIAL_1, 24, 8); \
+	_g->words.w1 = (unsigned int)(mode); \
 }
 
 #define gDPSetIod(pkt, iod) \
@@ -4828,7 +4837,7 @@ typedef union {
 #define iodFileSelect   0x02
 #define iodStarSelect   0x03
 #define iodCannon       0x04
-
+#endif
 #endif
 
 #endif /* _LANGUAGE_C */

@@ -7,6 +7,7 @@
 #include <stdbool.h>
 
 #include "gfx_3ds.h"
+#include "gfx_3ds_minimap.h"
 #include "gfx_3ds_menu.h"
 
 #include "gfx_cc.h"
@@ -75,6 +76,8 @@ static bool scissor;
 
 static C3D_Mtx modelView, projection;
 
+static bool sIsHud;
+
 #ifdef ENABLE_N3DS_3D_MODE
 static int sOrigBufIdx;
 static int s2DMode;
@@ -84,10 +87,10 @@ float iodW = 16.0f;
 void stereoTilt(C3D_Mtx* mtx, float z, float w)
 {
     /** ********************** Default L/R stereo perspective function with x/y tilt removed **********************
-    
+
         Preserving this to show what the proper function *should* look like.
         TODO: move to gfx_pc before RDP's mv*p happens, for proper and portable stereoscopic support
-        
+
     float fovy_tan = tanf(fovy * 0.5f * M_PI / 180.0f); // equals 1.0 when FOV is 90
     float fovy_tan_aspect = fovy_tan * aspect; // equals 1.0 because we are being passed an existing mv*p matrix
     float shift = iod / (2.0f*screen);
@@ -139,6 +142,11 @@ void gfx_citro3d_set_iod(float z, float w)
     iodW = w;
 }
 #endif
+
+static void gfx_citro3d_is_hud(bool is_hud)
+{
+    sIsHud = is_hud;
+}
 
 static bool gfx_citro3d_z_is_from_0_to_1(void)
 {
@@ -578,30 +586,12 @@ static void gfx_citro3d_set_use_alpha(bool use_alpha)
 
 static u32 vec4ToU32Color(float r, float g, float b, float a)
 {
-    int r2 = r * 255;
-    if (r2 < 0)
-        r2 = 0;
-    else if (r2 > 255)
-        r2 = 255;
-    int g2 = g * 255;
-    if (g2 < 0)
-        g2 = 0;
-    else if (g2 > 255)
-        g2 = 255;
-    int b2 = b * 255;
-    if (b2 < 0)
-        b2 = 0;
-    else if (b2 > 255)
-        b2= 255;
-    int a2 = a * 255;
-    if (a2 < 0)
-        a2 = 0;
-    else if (a2 > 255)
-        a2 = 255;
+    u8 r2 = MAX(0, MIN(255, r * 255));
+    u8 g2 = MAX(0, MIN(255, g * 255));
+    u8 b2 = MAX(0, MIN(255, b * 255));
+    u8 a2 = MAX(0, MIN(255, a * 255));
     return (a2 << 24) | (b2 << 16) | (g2 << 8) | r2;
 }
-
-
 
 static void renderTwoColorTris(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris)
 {
@@ -759,6 +749,13 @@ void gfx_citro3d_frame_draw_on(C3D_RenderTarget* target)
 
 static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris)
 {
+    if (sIsHud)
+    {
+        C3D_FrameDrawOn(gTargetBottom);
+
+        gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
+        return;
+    }
 #ifdef ENABLE_N3DS_3D_MODE
     if ((gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22) && gSliderLevel > 0.0f)
     {
@@ -767,7 +764,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
         stereoTilt(&projection, -iodZ, -iodW);
         gfx_citro3d_frame_draw_on(gTarget);
         gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
-        
+
         // right screen
         sBufIdx = sOrigBufIdx;
         stereoTilt(&projection, iodZ, iodW);
@@ -811,6 +808,8 @@ static void gfx_citro3d_init(void)
     C3D_AlphaTest(true, GPU_GREATER, 0x00);
 
     C3D_FrameRate(30);
+
+    gfx_3ds_init_minimap();
 }
 
 static void gfx_citro3d_start_frame(void)
@@ -825,13 +824,19 @@ static void gfx_citro3d_start_frame(void)
         gfx_citro3d_set_viewport(0, 0, 400, 240);
         sCurrentGfx3DSMode = gGfx3DSMode;
     }
-
     C3D_RenderTargetClear(gTarget, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
     C3D_RenderTargetClear(gTargetBottom, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
 #ifdef ENABLE_N3DS_3D_MODE
     if (gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22)
         C3D_RenderTargetClear(gTargetRight, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
 #endif
+
+    // bottom screen
+    C3D_FrameDrawOn(gTargetBottom);
+    uint32_t tris = gfx_3ds_draw_minimap(sVboBuffer, sBufIdx);
+    if (gShowConfigMenu)
+        tris += gfx_3ds_menu_draw(sVboBuffer, sBufIdx + tris, true);
+    sBufIdx += tris;
 
     // reset model
     Mtx_Identity(&modelView);
@@ -850,8 +855,6 @@ static void gfx_citro3d_on_resize(void)
 
 static void gfx_citro3d_end_frame(void)
 {
-    // TOOD: draw the minimap here
-    gfx_3ds_menu_draw(sVboBuffer, sBufIdx, gShowConfigMenu);
     // set the texenv back
     update_shader(false);
 
@@ -924,6 +927,7 @@ struct GfxRenderingAPI gfx_citro3d_api = {
     gfx_citro3d_finish_render,
     gfx_citro3d_set_fog,
     gfx_citro3d_set_fog_color,
+    gfx_citro3d_is_hud,
 #ifdef ENABLE_N3DS_3D_MODE
     gfx_citro3d_set_2d,
     gfx_citro3d_set_iod
