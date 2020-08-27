@@ -102,6 +102,31 @@ static void init_top_screens()
     C3D_AlphaTest(true, GPU_GREATER, 0x00);
 }
 
+void set_bottom_screen(bool enable)
+{
+    if (n3ds_model != 3) // old 2DS shares a single backlight across both screens
+    {
+        gspLcdInit();
+        enable ? GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_BOTTOM) : GSPLCD_PowerOffBacklight(GSPLCD_SCREEN_BOTTOM);
+        gspLcdExit();
+    }
+}
+
+aptHookCookie(cookie);
+
+void checkAptHook(APT_HookType hook, void UNUSED *param) {
+    if (!menu_mode) {
+        switch(hook) {
+            case APTHOOK_ONSUSPEND : set_bottom_screen(1);
+                break;
+            case APTHOOK_ONRESTORE :
+            case APTHOOK_ONWAKEUP  : set_bottom_screen(0);
+                break;
+            default:
+                break;
+        }
+    }
+}
 
 static void gfx_3ds_init(UNUSED const char *game_name, UNUSED bool start_in_fullscreen)
 {
@@ -122,6 +147,8 @@ static void gfx_3ds_init(UNUSED const char *game_name, UNUSED bool start_in_full
     }
 
     init_top_screens();
+    set_bottom_screen(0);
+    aptHook(&cookie, checkAptHook, NULL);
 }
 
 static void gfx_set_keyboard_callbacks(UNUSED bool (*on_key_down)(int scancode), UNUSED bool (*on_key_up)(int scancode), UNUSED void (*on_all_keys_up)(void))
@@ -147,6 +174,7 @@ static void gfx_3ds_main_loop(void (*run_one_game_iter)(void))
         else
         {
             int res = display_menu(&gfx_config);
+            set_bottom_screen(1);
             if (res < 0)
                 break;
             if (res > 0)
@@ -156,6 +184,7 @@ static void gfx_3ds_main_loop(void (*run_one_game_iter)(void))
                 init_top_screens();
                 consoleClear();
                 menu_mode = false;
+                set_bottom_screen(0);
             }
         }
     }
