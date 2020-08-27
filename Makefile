@@ -866,13 +866,18 @@ $(BUILD_DIR)/src/pc/gfx/shader.shbin.o : src/pc/gfx/shader.v.pica
 	$(DEVKITPRO)/tools/bin/picasso -o $(BUILD_DIR)/src/pc/gfx/shader.shbin $<
 	$(DEVKITPRO)/tools/bin/bin2s $(BUILD_DIR)/src/pc/gfx/shader.shbin | $(AS) -o $@
 
-3DSXTOOL_ARGS :=
-ifneq (,$(wildcard ./icon.smdh))
-    3DSXTOOL_ARGS := --smdh=icon.smdh
-endif
-$(EXE): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o
+SMDH_TITLE ?= Super Mario 64
+SMDH_DESCRIPTION ?= Super Mario 64 3DS Port
+SMDH_AUTHOR ?= mkst
+SMDH_ICON := icon.smdh
+
+$(EXE): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o $(SMDH_ICON)
 	$(LD) -L $(BUILD_DIR) -o $@.elf $(O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(LDFLAGS)
-	3dsxtool $@.elf $@ $(3DSXTOOL_ARGS)
+	3dsxtool $@.elf $@ --smdh=$(BUILD_DIR)/$(SMDH_ICON)
+
+%.smdh: %.png
+	smdhtool --create "$(SMDH_TITLE)" "$(SMDH_DESCRIPTION)" "$(SMDH_AUTHOR)" $< $(BUILD_DIR)/$@
+
 else
 $(EXE): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES)
 	$(LD) -L $(BUILD_DIR) -o $@ $(O_FILES) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(LDFLAGS)
