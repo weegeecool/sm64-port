@@ -51,6 +51,10 @@ static bool sDepthUpdateOn = true;
 static bool sDepthDecal = false;
 static bool sUseBlend;
 
+// calling FrameDrawOn resets viewport
+static int viewport_x, viewport_y;
+static int viewport_width, viewport_height;
+
 static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx modelView, projLeft, projRight;
 
@@ -421,7 +425,27 @@ static void gfx_citro3d_set_zmode_decal(bool zmode_decal)
 
 static void gfx_citro3d_set_viewport(int x, int y, int width, int height)
 {
-    C3D_SetViewport(x, y, width, height);
+    if (gGfx3DSMode == GFX_3DS_MODE_AA_22 || gGfx3DSMode == GFX_3DS_MODE_WIDE_AA_12)
+    {
+        viewport_x = x * 2;
+        viewport_y = y * 2;
+        viewport_width = width * 2;
+        viewport_height = height * 2;
+    }
+    else if (gGfx3DSMode == GFX_3DS_MODE_WIDE)
+    {
+        viewport_x = x * 2;
+        viewport_y = y;
+        viewport_width = width * 2;
+        viewport_height = height;
+    }
+    else // gGfx3DSMode == GFX_3DS_MODE_NORMAL
+    {
+        viewport_x = x;
+        viewport_y = y;
+        viewport_width = width;
+        viewport_height = height;
+    }
 }
 
 static void gfx_citro3d_set_scissor(int x, int y, int width, int height)
@@ -717,6 +741,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
 #endif
     // left screen
     C3D_FrameDrawOn(gTarget);
+    C3D_SetViewport(viewport_y, viewport_x, viewport_height, viewport_width);
     gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
 #ifdef ENABLE_N3DS_3D_MODE
     if ((gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22) && gSliderLevel > 0.0f)
@@ -734,6 +759,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
         }
         // draw right screen
         C3D_FrameDrawOn(gTargetRight);
+        C3D_SetViewport(viewport_y, viewport_x, viewport_height, viewport_width);
         gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
     }
 #endif
