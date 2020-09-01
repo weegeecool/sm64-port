@@ -2206,19 +2206,22 @@ index 7128aaa..eaa85da 100644
  void configfile_save(const char *filename);
  
 diff --git a/src/pc/controller/controller_3ds.c b/src/pc/controller/controller_3ds.c
-index aeb80d8..1fca7a4 100644
+index aeb80d8..5d449fd 100644
 --- a/src/pc/controller/controller_3ds.c
 +++ b/src/pc/controller/controller_3ds.c
-@@ -36,6 +36,8 @@
+@@ -36,6 +36,11 @@
  
  #include "../configfile.h"
  
++#include <include/types.h>
++#include <enhancements/puppycam.h>
++
 +s16 rightstick[2];
 +
  static int button_mapping[10][2];
  
  static void set_button_mapping(int index, int mask_n64, int mask_3ds)
-@@ -77,10 +79,15 @@ static void controller_3ds_read(OSContPad *pad)
+@@ -77,10 +82,21 @@ static void controller_3ds_read(OSContPad *pad)
  {
      pad->button = controller_3ds_get_held();
  
@@ -2235,6 +2238,12 @@ index aeb80d8..1fca7a4 100644
 +    hidCstickRead(&cStick);
 +    rightstick[0] = cStick.dx / 1.25f;
 +    rightstick[1] = cStick.dy / 1.25f;
++
++    if (rightstick[0] == 0 && rightstick[1] == 0) {
++        newcam_analogue = 0;
++    } else {
++        newcam_analogue = 1;
++    }
  }
  
  struct ControllerAPI controller_3ds = {
