@@ -14,6 +14,7 @@
 #define VERTEX_SHADER_SIZE 10
 #define TEXTURE_POOL_SIZE 4096
 
+static Gfx3DSMode sCurrentGfx3DSMode = GFX_3DS_MODE_NORMAL;
 
 static DVLB_s* sVShaderDvlb;
 static shaderProgram_s sShaderProgram;
@@ -799,6 +800,12 @@ static void gfx_citro3d_init(void)
 static void gfx_citro3d_start_frame(void)
 {
     sBufIdx = 0;
+    // reset viewport if video mode changed
+    if (gGfx3DSMode != sCurrentGfx3DSMode)
+    {
+        gfx_citro3d_set_viewport(0, 0, 400, 240);
+        sCurrentGfx3DSMode = gGfx3DSMode;
+    }
 
     C3D_RenderTargetClear(gTarget, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
 #ifdef ENABLE_N3DS_3D_MODE
