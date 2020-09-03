@@ -11,14 +11,15 @@
 #include "gfx_cc.h"
 #include "gfx_rendering_api.h"
 
-#define VERTEX_SHADER_SIZE 10
+#include "gfx_3ds_menu.h"
+
 #define TEXTURE_POOL_SIZE 4096
 
 static Gfx3DSMode sCurrentGfx3DSMode = GFX_3DS_MODE_NORMAL;
 
 static DVLB_s* sVShaderDvlb;
 static shaderProgram_s sShaderProgram;
-static void* sVboBuffer;
+static float* sVboBuffer;
 
 extern const u8 shader_shbin[];
 extern const u32 shader_shbin_size;
@@ -56,7 +57,6 @@ static bool sUseBlend;
 static int viewport_x, viewport_y;
 static int viewport_width, viewport_height;
 
-static int uLoc_projection, uLoc_modelView;
 static C3D_Mtx modelView, projLeft, projRight;
 
 #ifdef ENABLE_N3DS_3D_MODE
@@ -799,6 +799,8 @@ static void gfx_citro3d_init(void)
 
 static void gfx_citro3d_start_frame(void)
 {
+    C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+
     sBufIdx = 0;
     // reset viewport if video mode changed
     if (gGfx3DSMode != sCurrentGfx3DSMode)
@@ -808,11 +810,11 @@ static void gfx_citro3d_start_frame(void)
     }
 
     C3D_RenderTargetClear(gTarget, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
+    C3D_RenderTargetClear(gTargetBottom, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
 #ifdef ENABLE_N3DS_3D_MODE
     if (gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22)
         C3D_RenderTargetClear(gTargetRight, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
 #endif
-    C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 }
 
 static void gfx_citro3d_on_resize(void)
@@ -823,6 +825,9 @@ static void gfx_citro3d_end_frame(void)
 {
     float target_fps = 30.0f;
 
+    // TOOD: draw the minimap here
+    gfx_3ds_menu_draw(sVboBuffer, sBufIdx, gShowConfigMenu);
+    
     C3D_FrameEnd(0);
     if (C3D_GetProcessingTime() < 1000.0f / target_fps)
         gspWaitForVBlank();

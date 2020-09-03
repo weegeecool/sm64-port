@@ -7,14 +7,17 @@
 
 C3D_RenderTarget *gTarget;
 C3D_RenderTarget *gTargetRight;
+C3D_RenderTarget *gTargetBottom;
+
+int uLoc_projection, uLoc_modelView;
+
 float gSliderLevel;
 
-struct gfx_configuration gfx_config = {true, false}; // aa on, 800px off
-
 Gfx3DSMode gGfx3DSMode;
-PrintConsole gConsole;
 
-static bool menu_mode;
+bool gShowConfigMenu = false;
+bool gShouldRun = true;
+
 static u8 n3ds_model = 0;
 
 static bool checkN3DS()
@@ -26,7 +29,7 @@ static bool checkN3DS()
     return false;
 }
 
-static void stop_top_screens()
+static void deinitialise_screens()
 {
     if (gTarget != NULL)
     {
@@ -40,22 +43,28 @@ static void stop_top_screens()
         gTargetRight = NULL;
     }
 #endif
+    if (gTargetBottom != NULL)
+    {
+        C3D_RenderTargetDelete(gTargetBottom);
+        gTargetBottom = NULL;
+    }
     C3D_Fini();
 }
 
-static void init_top_screens()
+static void initialise_screens()
 {
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 
     bool useAA = gfx_config.useAA;
     bool useWide =  gfx_config.useWide && n3ds_model != 3; // old 2DS does not support 800px
 
-    u32 transferFlags =
-        GX_TRANSFER_FLIP_VERT(0) |
-        GX_TRANSFER_OUT_TILED(0) |
-        GX_TRANSFER_RAW_COPY(0) |
-        GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) |
-        GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8);
+#ifdef ENABLE_N3DS_3D_MODE
+    // Not enough VRAM for 3D + AA + bottom screen
+    if (!useWide)
+        useAA = false;
+#endif
+
+    u32 transferFlags = DISPLAY_TRANSFER_FLAGS;
 
     if (useAA && !useWide)
         transferFlags |= GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_XY);
@@ -100,32 +109,10 @@ static void init_top_screens()
     C3D_DepthMap(true, -1.0f, 0);
     C3D_DepthTest(false, GPU_LEQUAL, GPU_WRITE_ALL);
     C3D_AlphaTest(true, GPU_GREATER, 0x00);
-}
 
-void set_bottom_screen(bool enable)
-{
-    if (n3ds_model != 3) // old 2DS shares a single backlight across both screens
-    {
-        gspLcdInit();
-        enable ? GSPLCD_PowerOnBacklight(GSPLCD_SCREEN_BOTTOM) : GSPLCD_PowerOffBacklight(GSPLCD_SCREEN_BOTTOM);
-        gspLcdExit();
-    }
-}
-
-aptHookCookie(cookie);
-
-void checkAptHook(APT_HookType hook, void UNUSED *param) {
-    if (!menu_mode) {
-        switch(hook) {
-            case APTHOOK_ONSUSPEND : set_bottom_screen(1);
-                break;
-            case APTHOOK_ONRESTORE :
-            case APTHOOK_ONWAKEUP  : set_bottom_screen(0);
-                break;
-            default:
-                break;
-        }
-    }
+    gTargetBottom = C3D_RenderTargetCreate(240, 320, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+    C3D_RenderTargetSetOutput(gTargetBottom, GFX_BOTTOM, GFX_LEFT,
+        DISPLAY_TRANSFER_FLAGS | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
 }
 
 static void gfx_3ds_init(UNUSED const char *game_name, UNUSED bool start_in_fullscreen)
@@ -134,7 +121,6 @@ static void gfx_3ds_init(UNUSED const char *game_name, UNUSED bool start_in_full
         osSetSpeedupEnable(true);
 
     gfxInitDefault();
-    consoleSelect(consoleInit(GFX_BOTTOM, &gConsole));
 
     Result rc = cfguInit();
     if (R_SUCCEEDED(rc))
@@ -146,9 +132,9 @@ static void gfx_3ds_init(UNUSED const char *game_name, UNUSED bool start_in_full
         cfguExit();
     }
 
-    init_top_screens();
-    set_bottom_screen(0);
-    aptHook(&cookie, checkAptHook, NULL);
+    gfx_3ds_menu_init();
+
+    initialise_screens();
 }
 
 static void gfx_set_keyboard_callbacks(UNUSED bool (*on_key_down)(int scancode), UNUSED bool (*on_key_up)(int scancode), UNUSED void (*on_all_keys_up)(void))
@@ -165,28 +151,9 @@ static void gfx_set_fullscreen(UNUSED bool enable)
 
 static void gfx_3ds_main_loop(void (*run_one_game_iter)(void))
 {
-    while (aptMainLoop())
+    while (aptMainLoop() && gShouldRun)
     {
-        if (!menu_mode)
-        {
-            run_one_game_iter();
-        }
-        else
-        {
-            int res = display_menu(&gfx_config);
-            set_bottom_screen(1);
-            if (res < 0)
-                break;
-            if (res > 0)
-            {
-                // exited menu so reinit screens
-                stop_top_screens();
-                init_top_screens();
-                consoleClear();
-                menu_mode = false;
-                set_bottom_screen(0);
-            }
-        }
+        run_one_game_iter();
     }
 
     ndspExit();
@@ -200,16 +167,43 @@ static void gfx_3ds_get_dimensions(uint32_t *width, uint32_t *height)
     *height = 240;
 }
 
+static int debounce;
 static void gfx_3ds_handle_events(void)
 {
     // as good a time as any
     gSliderLevel = osGet3DSliderState();
 
+    if (debounce > 0)
+    {
+        debounce--;
+        return;
+    }
+
     // check if screen is pressed
     hidScanInput();
-    u32 kDown = keysHeld();
-    if (kDown & KEY_TOUCH)
-        menu_mode = true;
+    touchPosition pos;
+    hidTouchRead(&pos);
+
+    if (pos.px || pos.py)
+    {
+        debounce = 8;
+        if (gShowConfigMenu)
+        {
+            menu_action res = gfx_3ds_menu_on_touch(pos.px, pos.py);
+            if (res == CONFIG_CHANGED)
+            {
+                deinitialise_screens();
+                initialise_screens();
+            } else if (res == EXIT_MENU)
+            {
+                gShowConfigMenu = false;
+            }
+        } else
+        {
+            // screen tapped so show menu
+            gShowConfigMenu = true;
+        }
+    }
 }
 
 static bool gfx_3ds_start_frame(void)

@@ -35,12 +35,24 @@
 
 #include <3ds.h>
 #include <citro3d.h>
+#include <tex3ds.h>
+
+#define VERTEX_SHADER_SIZE 10
+
+#define DISPLAY_TRANSFER_FLAGS \
+	(GX_TRANSFER_FLIP_VERT(0) | \
+     GX_TRANSFER_OUT_TILED(0) | \
+     GX_TRANSFER_RAW_COPY(0) | \
+	 GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | \
+     GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8))
 
 extern C3D_RenderTarget *gTarget;
 extern C3D_RenderTarget *gTargetRight;
+extern C3D_RenderTarget *gTargetBottom;
+
+extern int uLoc_projection, uLoc_modelView;
 
 extern float gSliderLevel;
-extern PrintConsole gConsole;
 
 typedef enum
 {
@@ -50,8 +62,20 @@ typedef enum
     GFX_3DS_MODE_WIDE_AA_12
 } Gfx3DSMode;
 
+extern bool gShouldRun;
+extern bool gShowConfigMenu;
+
 extern struct GfxWindowManagerAPI gfx_3ds;
 extern Gfx3DSMode gGfx3DSMode;
+
+static bool load_t3x_texture(C3D_Tex* tex, C3D_TexCube* cube, const void* data, size_t size)
+{
+    Tex3DS_Texture t3x = Tex3DS_TextureImport(data, size, tex, cube, false);
+    if (!t3x)
+        return false;
+    Tex3DS_TextureFree(t3x);
+    return true;
+}
 
 #endif
 #endif
