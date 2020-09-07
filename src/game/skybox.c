@@ -309,11 +309,19 @@ Gfx *init_skybox_display_list(s8 player, s8 background, s8 colorIndex) {
         Mtx *ortho = create_skybox_ortho_matrix(player);
 
         gSPDisplayList(dlist++, dl_skybox_begin);
+#ifdef ENABLE_N3DS_3D_MODE
+        gDPSet2d(dlist++, 1);
+#endif
         gSPMatrix(dlist++, VIRTUAL_TO_PHYSICAL(ortho), G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);
         gSPDisplayList(dlist++, dl_skybox_tile_tex_settings);
         draw_skybox_tile_grid(&dlist, background, player, colorIndex);
         gSPDisplayList(dlist++, dl_skybox_end);
+#ifdef ENABLE_N3DS_3D_MODE
+        gDPForceFlush(dlist++); // flush skybox
+        gDPSet2d(dlist++, 0); // reset 2D mode
+#endif
         gSPEndDisplayList(dlist);
+
     }
     return skybox;
 }
