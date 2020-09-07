@@ -154,9 +154,9 @@ static struct GfxWindowManagerAPI *gfx_wapi;
 static struct GfxRenderingAPI *gfx_rapi;
 
 #ifdef ENABLE_N3DS_3D_MODE
-static void gfx_set_is_2d(bool is2d)
+static void gfx_set_is_2d(bool is_2d)
 {
-    gfx_rapi->set_is_2d(is2d);
+    gfx_rapi->set_is_2d(is_2d);
 }
 #endif
 
@@ -1536,6 +1536,9 @@ static void gfx_run_dl(Gfx* cmd) {
 #ifdef ENABLE_N3DS_3D_MODE
             case G_SPECIAL_1:
                 gfx_set_is_2d(cmd->words.w1 == 1);
+                break;
+            case G_SPECIAL_2:
+                gfx_flush();
                 break;
 #endif
         }

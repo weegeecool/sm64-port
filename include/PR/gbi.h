@@ -4803,6 +4803,13 @@ typedef union {
 	_g->words.w0 = _SHIFTL(G_SPECIAL_1, 24, 8); \
 	_g->words.w1 = (unsigned int)(mode); \
 }
+#define gDPForceFlush(pkt) \
+{ \
+	Gfx *_g = (Gfx *)(pkt);	\
+									\
+	_g->words.w0 = _SHIFTL(G_SPECIAL_2, 24, 8); \
+}
+
 #endif
 
 #endif /* _LANGUAGE_C */

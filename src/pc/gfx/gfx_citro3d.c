@@ -718,6 +718,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
     Mtx_Identity(&modelView);
     Mtx_Identity(&projLeft);
     Mtx_Identity(&projRight);
+
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projLeft);
 
@@ -727,7 +728,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
         sOrigBufIdx = sBufIdx;
         iod = gSliderLevel / 4.0f;
 
-        if (!(sIs2D && buf_vbo_num_tris == 2))
+        if (!sIs2D)
         {
             Mtx_PerspStereoTilt(&projLeft, fov, 1.0f , 0.1f, 10.0f, -iod, focalLen, false);
             // hacks
@@ -750,7 +751,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
         // restore buffer index
         sBufIdx = sOrigBufIdx;
 
-        if (!(sIs2D && buf_vbo_num_tris == 2))
+        if (!sIs2D)
         {
             Mtx_PerspStereoTilt(&projRight, fov, 1.0f, 0.1f, 10.0f, iod, focalLen, false);
             // hacks
@@ -827,7 +828,7 @@ static void gfx_citro3d_end_frame(void)
 
     // TOOD: draw the minimap here
     gfx_3ds_menu_draw(sVboBuffer, sBufIdx, gShowConfigMenu);
-    
+
     C3D_FrameEnd(0);
     if (C3D_GetProcessingTime() < 1000.0f / target_fps)
         gspWaitForVBlank();

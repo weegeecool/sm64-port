@@ -362,12 +362,13 @@ void play_transition_after_delay(s16 transType, s16 time, u8 red, u8 green, u8 b
 }
 
 void render_game(void) {
-#ifdef ENABLE_N3DS_3D_MODE
-    gDPSet2d(gDisplayListHead++, 0); // reset 2d mode
-#endif
     if (gCurrentArea != NULL && !gWarpTransition.pauseRendering) {
         geo_process_root(gCurrentArea->unk04, D_8032CE74, D_8032CE78, gFBSetColor);
 
+#ifdef ENABLE_N3DS_3D_MODE
+        gDPForceFlush(gDisplayListHead++); // flush 3D scene
+        gDPSet2d(gDisplayListHead++, 1); // HUD is 2D
+#endif
         gSPViewport(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(&D_8032CF00));
 
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
@@ -376,12 +377,24 @@ void render_game(void) {
 
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         render_text_labels();
+#ifdef ENABLE_N3DS_3D_MODE
+        gDPForceFlush(gDisplayListHead++); // flush hud
+        gDPSet2d(gDisplayListHead++, 0); // reset 2D mode
+#endif
         do_cutscene_handler();
         print_displaying_credits_entry();
+
+#ifdef ENABLE_N3DS_3D_MODE
+        gDPForceFlush(gDisplayListHead++); // flush credits
+        gDPSet2d(gDisplayListHead++, 1); // dialog/menus are 2D
+#endif
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                       SCREEN_HEIGHT - BORDER_HEIGHT);
         gPauseScreenMode = render_menus_and_dialogs();
-
+#ifdef ENABLE_N3DS_3D_MODE
+        gDPForceFlush(gDisplayListHead++); // flush dialog/menus
+        gDPSet2d(gDisplayListHead++, 0); // reset 2D mode
+#endif
         if (gPauseScreenMode != 0) {
             gSaveOptSelectIndex = gPauseScreenMode;
         }
@@ -408,7 +421,15 @@ void render_game(void) {
             }
         }
     } else {
+#ifdef ENABLE_N3DS_3D_MODE
+        gDPForceFlush(gDisplayListHead++); // flush anything
+        gDPSet2d(gDisplayListHead++, 1); // text labels are 2D
+#endif
         render_text_labels();
+#ifdef ENABLE_N3DS_3D_MODE
+        gDPForceFlush(gDisplayListHead++); // flush text labels
+        gDPSet2d(gDisplayListHead++, 0); // reset 2D mode
+#endif
         if (D_8032CE78 != 0) {
             clear_viewport(D_8032CE78, gWarpTransFBSetColor);
         } else {
