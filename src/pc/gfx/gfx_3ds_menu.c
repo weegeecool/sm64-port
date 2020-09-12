@@ -9,7 +9,7 @@ struct gfx_configuration gfx_config = {false, false}; // AA off, 800px off
 struct gfx_configuration gfx_config = {true, false}; // AA on, 800px off
 #endif
 
-static C3D_Mtx modelView, projBottom;
+static C3D_Mtx modelView, projection;
 static int buffer_offset;
 
 static C3D_Tex mode_400_tex, mode_800_tex;
@@ -25,10 +25,10 @@ static int touch_y;
 static void gfx_3ds_menu_draw_background(float *vbo_buffer)
 {
     Mtx_Identity(&modelView);
-    Mtx_OrthoTilt(&projBottom, 0.0, 320.0, 0.0, 240.0, 0.0, 1.0, true);
+    Mtx_OrthoTilt(&projection, 0.0, 320.0, 0.0, 240.0, 0.0, 1.0, true);
 
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projBottom);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
     memcpy(vbo_buffer + buffer_offset * VERTEX_SHADER_SIZE,
            vertex_list_color,
@@ -50,10 +50,10 @@ static void gfx_3ds_menu_draw_button(float *vbo_buffer, int x, int y, C3D_Tex te
     Mtx_Identity(&modelView);
     Mtx_Translate(&modelView, x, 240 - y, 0.0f, false);
 
-    Mtx_OrthoTilt(&projBottom, 0.0, 320.0, 0.0, 240.0, 0.0, 1.0, true);
+    Mtx_OrthoTilt(&projection, 0.0, 320.0, 0.0, 240.0, 0.0, 1.0, true);
 
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projBottom);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
     memcpy(vbo_buffer + buffer_offset * VERTEX_SHADER_SIZE,
            vertex_list_button,

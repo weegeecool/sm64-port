@@ -57,7 +57,7 @@ static bool sUseBlend;
 static int viewport_x, viewport_y;
 static int viewport_width, viewport_height;
 
-static C3D_Mtx modelView, projLeft, projRight;
+static C3D_Mtx modelView, projection;
 
 #ifdef ENABLE_N3DS_3D_MODE
 static int sOrigBufIdx;
@@ -716,11 +716,10 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
 {
     // reset model and projections
     Mtx_Identity(&modelView);
-    Mtx_Identity(&projLeft);
-    Mtx_Identity(&projRight);
+    Mtx_Identity(&projection);
 
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projLeft);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 
 #ifdef ENABLE_N3DS_3D_MODE
     if ((gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22) && gSliderLevel > 0.0f)
@@ -730,11 +729,11 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
 
         if (!sIs2D)
         {
-            Mtx_PerspStereoTilt(&projLeft, fov, 1.0f , 0.1f, 10.0f, -iod, focalLen, false);
+            Mtx_PerspStereoTilt(&projection, fov, 1.0f , 0.1f, 10.0f, -iod, focalLen, false);
             // hacks
-            (&projLeft)->r[2].z = 1.0f;
-            (&projLeft)->r[3].w = 1.0f;
-            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projLeft);
+            (&projection)->r[2].z = 1.0f;
+            (&projection)->r[3].w = 1.0f;
+            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
             // undo the rotation applied by tilt
             Mtx_RotateZ(&modelView, 0.25f*M_TAU, true);
             C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
@@ -753,11 +752,11 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
 
         if (!sIs2D)
         {
-            Mtx_PerspStereoTilt(&projRight, fov, 1.0f, 0.1f, 10.0f, iod, focalLen, false);
+            Mtx_PerspStereoTilt(&projection, fov, 1.0f, 0.1f, 10.0f, iod, focalLen, false);
             // hacks
-            (&projRight)->r[2].z = 1.0f;
-            (&projRight)->r[3].w = 1.0f;
-            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projRight);
+            (&projection)->r[2].z = 1.0f;
+            (&projection)->r[3].w = 1.0f;
+            C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
         }
         // draw right screen
         C3D_FrameDrawOn(gTargetRight);
@@ -824,8 +823,7 @@ static void gfx_citro3d_on_resize(void)
 
 static void gfx_citro3d_end_frame(void)
 {
-    float target_fps = 30.0f;
-
+    float target_fps = 60.0f;
     // TOOD: draw the minimap here
     gfx_3ds_menu_draw(sVboBuffer, sBufIdx, gShowConfigMenu);
 
