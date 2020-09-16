@@ -19,13 +19,17 @@ A prior copy of the game is required to extract the assets.
 
 ## Building
 
-After building, either install the `.cia` if you made one, or copy over the `sm64.us.f3dex2e.3dsx` into the `/3ds` directory on your SD card and load via The Homebrew Launcher.
+After building, either install the `.cia` if you made one, or copy over the `sm64.us.f3dex2e.3dsx` into the `/3ds` directory on your SD card and load via [The Homebrew Launcher](https://smealum.github.io/3ds/).
 
   - [Docker](#docker)
-  - [Linux / WSL (ubuntu)](#linux--wsl-ubuntu)
+  - [Linux / WSL (Ubuntu 18.04 or higher)](#linux--wsl-ubuntu)
   - [Windows (MSYS2)](#windows-msys2)
 
+Visit the [wiki](https://github.com/mkst/sm64-port/wiki) for information on converting the `.3dsx` to `.cia` via WSL/MSYS2.
+
 ### Docker
+
+The following assumes a basic understanding of [Docker](https://www.docker.com/); if you do not belong to the `docker` group, prefix those commands with `sudo`.
 
 **Clone Repository:**
 
@@ -33,7 +37,7 @@ After building, either install the `.cia` if you made one, or copy over the `sm6
 git clone https://github.com/mkst/sm64-port.git
 ```
 
-**Nagivate into freshly checked out repo:**
+**Navigate into freshly checked out repo:**
 
 ```sh
 cd sm64-port
@@ -51,25 +55,27 @@ cp /path/to/your/baserom.XX.z64 . # change 'XX' to 'us', 'eu' or 'jp' as appropr
 git checkout 3ds-port
 ```
 
-**Build with prebaked image:**
+**Build with pre-baked image:**
 
 Change `VERSION=us` if applicable.
 ```sh
-docker run --rm --mount type=bind,source="$(pwd)",destination=/sm64  \
+docker run --rm -v $(pwd):/sm64  \
   markstreet/sm64:3ds \
-  make TARGET_N3DS=1 VERSION=us --jobs 4
+  make VERSION=us --jobs 4
 ```
 
 **Create .cia from .3dsx (Optional):**
 
 ```sh
-docker run --rm --mount type=bind,source="$(pwd)",destination=/data \
+docker run --rm -v $(pwd):/data \
   markstreet/3dstools:0.1 \
   sh -c "cxitool build/us_3ds/sm64.us.f3dex2e.3dsx sm64.cxi && \
   makerom -f cia -o sm64.cia -target t -i sm64.cxi:0:0 -ignoresign"
 ```
 
 ### Linux / WSL (Ubuntu)
+
+Tested successfully on **Ubuntu 18.04** and **20.04**. Does not work on **16.04**.
 
 ```sh
 sudo su -
@@ -184,7 +190,7 @@ export DEVKITPPC=/opt/devkitpro/devkitPPC
 git clone https://github.com/mkst/sm64-port.git
 ```
 
-**Nagivate into freshly checked out repo:**
+**Navigate into freshly checked out repo:**
 
 ```sh
 cd sm64-port
@@ -209,7 +215,7 @@ git checkout 3ds-port
 make VERSION=us --jobs 4 # change 'us' to 'eu' or 'jp' as appropriate
 ```
 
-### Other
+### Other Operating Systems
 
 TBD; feel free to submit a PR.
 
