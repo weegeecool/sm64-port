@@ -1857,10 +1857,10 @@ index 2d49d06..31cb72f 100644
          gSPDisplayList(displayListIter++, &intro_seg7_dl_0700B3A0);
          gSPPopMatrix(displayListIter++, G_MTX_MODELVIEW);
 diff --git a/src/pc/gfx/gfx_citro3d.c b/src/pc/gfx/gfx_citro3d.c
-index a062476..ca51bc5 100644
+index c564a46..52a7d87 100644
 --- a/src/pc/gfx/gfx_citro3d.c
 +++ b/src/pc/gfx/gfx_citro3d.c
-@@ -823,13 +823,10 @@ static void gfx_citro3d_on_resize(void)
+@@ -837,13 +837,10 @@ static void gfx_citro3d_on_resize(void)
  
  static void gfx_citro3d_end_frame(void)
  {

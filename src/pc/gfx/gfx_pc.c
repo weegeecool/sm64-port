@@ -824,9 +824,15 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx) {
         if (z_is_from_0_to_1) {
             z = (z + w) / 2.0f;
         }
+#ifdef TARGET_N3DS
+        buf_vbo[buf_vbo_len++] = v_arr[i]->y;
+        buf_vbo[buf_vbo_len++] = -v_arr[i]->x;
+        buf_vbo[buf_vbo_len++] = -z;
+#else
         buf_vbo[buf_vbo_len++] = v_arr[i]->x;
         buf_vbo[buf_vbo_len++] = v_arr[i]->y;
         buf_vbo[buf_vbo_len++] = z;
+#endif
         buf_vbo[buf_vbo_len++] = w;
 
         if (use_texture) {
