@@ -842,6 +842,9 @@ static void gfx_citro3d_end_frame(void)
     // TOOD: draw the minimap here
     gfx_3ds_menu_draw(sVboBuffer, sBufIdx, gShowConfigMenu);
 
+    // set the texenv back
+    update_shader(false);
+
     C3D_FrameEnd(0);
 }
 
