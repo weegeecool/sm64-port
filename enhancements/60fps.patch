@@ -496,12 +496,12 @@ index 16a9272..ee1b029 100644
      gSPDisplayList(sGfxCursor++, &tiny_bubble_dl_0B006AB0);
      gSPEndDisplayList(sGfxCursor++);
 diff --git a/src/game/envfx_snow.c b/src/game/envfx_snow.c
-index c3c14a5..d2212ef 100644
+index f6802da..8031e28 100644
 --- a/src/game/envfx_snow.c
 +++ b/src/game/envfx_snow.c
-@@ -54,6 +54,26 @@ extern void *tiny_bubble_dl_0B006AB0;
- extern void *tiny_bubble_dl_0B006A50;
- extern void *tiny_bubble_dl_0B006CD8;
+@@ -54,6 +54,26 @@ extern Gfx tiny_bubble_dl_0B006AB0[];
+ extern Gfx tiny_bubble_dl_0B006A50[];
+ extern Gfx tiny_bubble_dl_0B006CD8[];
  
 +static struct {
 +    Gfx *pos;
@@ -1857,7 +1857,7 @@ index 2d49d06..31cb72f 100644
          gSPDisplayList(displayListIter++, &intro_seg7_dl_0700B3A0);
          gSPPopMatrix(displayListIter++, G_MTX_MODELVIEW);
 diff --git a/src/pc/gfx/gfx_citro3d.c b/src/pc/gfx/gfx_citro3d.c
-index f2438e8..1e7b08e 100644
+index affdf08..42e86b8 100644
 --- a/src/pc/gfx/gfx_citro3d.c
 +++ b/src/pc/gfx/gfx_citro3d.c
 @@ -810,7 +810,7 @@ static void gfx_citro3d_init(void)
