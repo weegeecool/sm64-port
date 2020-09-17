@@ -239,7 +239,11 @@ ifeq ($(TARGET_N64),1)
   ASM_DIRS := asm $(ASM_DIRS)
 else
   SRC_DIRS := $(SRC_DIRS) src/pc src/pc/gfx src/pc/audio src/pc/controller
-  ASM_DIRS :=
+  ifeq ($(TARGET_N3DS),1)
+    ASM_DIRS := src/pc/gfx/asm
+  else
+    ASM_DIRS :=
+  endif
 endif
 BIN_DIRS := bin bin/$(VERSION)
 
@@ -546,6 +550,9 @@ ifeq ($(ENABLE_N3DS_3D_MODE),1)
 endif
 
 ASFLAGS := -I include -I $(BUILD_DIR) $(VERSION_ASFLAGS)
+ifeq ($(TARGET_N3DS),1)
+  ASFLAGS += -march=armv6k -mfloat-abi=hard -mfpu=neon
+endif
 
 LDFLAGS := $(PLATFORM_LDFLAGS) $(GFX_LDFLAGS)
 

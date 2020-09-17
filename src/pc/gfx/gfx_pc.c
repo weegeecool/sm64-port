@@ -513,6 +513,10 @@ static void calculate_normal_dir(const Light_t *light, float coeffs[3]) {
     gfx_normalize_vector(coeffs);
 }
 
+#ifdef TARGET_N3DS
+void multMatrix44FPU(const float a[4][4], const float b[4][4], float res[4][4]);
+#define gfx_matrix_mul(res, a, b) multMatrix44FPU( (const float (*)[4])(a), (const float (*)[4])(b), (float (*)[4])(res) )
+#else
 static void gfx_matrix_mul(float res[4][4], const float a[4][4], const float b[4][4]) {
     float tmp[4][4];
     for (int i = 0; i < 4; i++) {
@@ -525,6 +529,7 @@ static void gfx_matrix_mul(float res[4][4], const float a[4][4], const float b[4
     }
     memcpy(res, tmp, sizeof(tmp));
 }
+#endif
 
 static void gfx_sp_matrix(uint8_t parameters, const int32_t *addr) {
     float matrix[4][4];
@@ -579,17 +584,30 @@ static float gfx_adjust_x_for_aspect_ratio(float x) {
     return x * (4.0f / 3.0f) / ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
 }
 
+#ifdef TARGET_N3DS
+void transfByMatrix44FPU(const float m[3][4], const float *, float res[4]);
+#endif
+
 static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx *vertices) {
     for (size_t i = 0; i < n_vertices; i++, dest_index++) {
         const Vtx_t *v = &vertices[i].v;
         const Vtx_tn *vn = &vertices[i].n;
         struct LoadedVertex *d = &rsp.loaded_vertices[dest_index];
 
+#ifdef TARGET_N3DS
+        float vec[4];
+        transfByMatrix44FPU(rsp.MP_matrix, v->ob, vec);
+
+        float x = vec[0];
+        float y = vec[1];
+        float z = vec[2];
+        float w = vec[3];
+#else
         float x = v->ob[0] * rsp.MP_matrix[0][0] + v->ob[1] * rsp.MP_matrix[1][0] + v->ob[2] * rsp.MP_matrix[2][0] + rsp.MP_matrix[3][0];
         float y = v->ob[0] * rsp.MP_matrix[0][1] + v->ob[1] * rsp.MP_matrix[1][1] + v->ob[2] * rsp.MP_matrix[2][1] + rsp.MP_matrix[3][1];
         float z = v->ob[0] * rsp.MP_matrix[0][2] + v->ob[1] * rsp.MP_matrix[1][2] + v->ob[2] * rsp.MP_matrix[2][2] + rsp.MP_matrix[3][2];
         float w = v->ob[0] * rsp.MP_matrix[0][3] + v->ob[1] * rsp.MP_matrix[1][3] + v->ob[2] * rsp.MP_matrix[2][3] + rsp.MP_matrix[3][3];
-
+#endif
         x = gfx_adjust_x_for_aspect_ratio(x);
 
         short U = v->tc[0] * rsp.texture_scaling_factor.s >> 16;
