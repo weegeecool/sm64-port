@@ -92,10 +92,10 @@ index 0000000..dc4481e
 +#endif // TARGET_N64
 diff --git a/enhancements/puppycam.inc.c b/enhancements/puppycam.inc.c
 new file mode 100644
-index 0000000..f75b329
+index 0000000..4689813
 --- /dev/null
 +++ b/enhancements/puppycam.inc.c
-@@ -0,0 +1,1058 @@
+@@ -0,0 +1,1057 @@
 +#include "sm64.h"
 +#include "game/camera.h"
 +#include "game/level_update.h"
@@ -222,11 +222,10 @@ index 0000000..f75b329
 +static u8 newcam_flags_de[][64] = {{NC_DISABLED_DE}, {NC_ENABLED_DE}};
 +static u8 newcam_strings_fr[][64] = {{NC_BUTTON_FR}, {NC_BUTTON2_FR}, {NC_OPTION_FR}, {NC_HIGHLIGHT_L_FR}, {NC_HIGHLIGHT_R_FR}};
 +static u8 newcam_strings_de[][64] = {{NC_BUTTON_DE}, {NC_BUTTON2_DE}, {NC_OPTION_DE}, {NC_HIGHLIGHT_L_DE}, {NC_HIGHLIGHT_R_DE}};
-+#else
++#endif
 +static u8 newcam_options[][64] = {{NC_ANALOGUE}, {NC_CAMX}, {NC_CAMY}, {NC_INVERTX}, {NC_INVERTY}, {NC_CAMC}, {NC_CAMP}, {NC_CAMD}};
 +static u8 newcam_flags[][64] = {{NC_DISABLED}, {NC_ENABLED}};
 +static u8 newcam_strings[][64] = {{NC_BUTTON}, {NC_BUTTON2}, {NC_OPTION}, {NC_HIGHLIGHT_L}, {NC_HIGHLIGHT_R}};
-+#endif
 +#endif
 +
 +#define OPT 32 //Just a temp thing
@@ -1386,7 +1385,7 @@ index 0000000..7fded1b
 +    print_text_fmt_int(32,48,"%d",newcam_yaw);
 +}
 diff --git a/include/segments.h b/include/segments.h
-index 8963446..f6bfa63 100644
+index 8963446..46b8bac 100644
 --- a/include/segments.h
 +++ b/include/segments.h
 @@ -1,5 +1,7 @@
@@ -1399,7 +1398,7 @@ index 8963446..f6bfa63 100644
  
  /*
   * Memory addresses for segments. Ideally, this header file would not be
-@@ -44,13 +46,13 @@
+@@ -44,10 +46,10 @@
   */
  
  #define SEG_BUFFERS      0x8005C000 // 0x0085000 in size
@@ -1414,15 +1413,11 @@ index 8963446..f6bfa63 100644
  #define SEG_POOL_END     0x80800000
  #define SEG_POOL_END_4MB 0x80400000 // For the error message screen enhancement.
  #define SEG_GODDARD      SEG_POOL_START + 0x113000
- #endif
- 
--#endif // SEGMENTS_H
-+#endif // _SEGMENTS_H
 diff --git a/include/text_strings.h.in b/include/text_strings.h.in
-index 749179b..18d3803 100644
+index 749179b..eea9ac0 100644
 --- a/include/text_strings.h.in
 +++ b/include/text_strings.h.in
-@@ -3,6 +3,75 @@
+@@ -3,6 +3,74 @@
  
  #include "text_menu_strings.h"
  
@@ -1442,7 +1437,7 @@ index 749179b..18d3803 100644
 +	#define NC_HIGHLIGHT_L 			_(">")
 +	#define NC_HIGHLIGHT_R 			_("<")
 +	#define NC_ANALOGUE				_("Analogue Camera")
-+	#else
++#else
 +	#define NC_CAMX 				_("Camera X Sensitivity")
 +    #define NC_CAMY 				_("Camera Y Sensitivity")
 +	#define NC_INVERTX				_("Invert X Axis")
@@ -1458,10 +1453,9 @@ index 749179b..18d3803 100644
 +	#define NC_HIGHLIGHT_L 			_(">")
 +	#define NC_HIGHLIGHT_R 			_("<")
 +	#define NC_ANALOGUE				_("Analogue Camera")
-+	#endif
++#endif
 +
-+	#if defined(VERSION_EU)
-+
++#if defined(VERSION_EU)
 +	#define NC_CAMX_FR 				_("Sensitivité de caméra X")
 +    #define NC_CAMY_FR 				_("Sensitivité de caméra Y")
 +	#define NC_INVERTX_FR			_("Inverser l'axe X")
@@ -1499,10 +1493,10 @@ index 749179b..18d3803 100644
   * Global Symbols
   */
 diff --git a/src/engine/math_util.c b/src/engine/math_util.c
-index 58c5e3f..488f67d 100644
+index 58c5e3f..4bbde69 100644
 --- a/src/engine/math_util.c
 +++ b/src/engine/math_util.c
-@@ -49,6 +49,35 @@ void *vec3f_sum(Vec3f dest, Vec3f a, Vec3f b) {
+@@ -49,6 +49,36 @@ void *vec3f_sum(Vec3f dest, Vec3f a, Vec3f b) {
      return &dest; //! warning: function returns address of local variable
  }
  
@@ -1528,7 +1522,8 @@ index 58c5e3f..488f67d 100644
 +}
 +
 +/// Make 'dest' the difference of vectors a and b.
-+void *vec3f_dif(Vec3f dest, Vec3f a, Vec3f b) {
++void *vec3f_dif(Vec3f dest, Vec3f a, Vec3f b)
++{
 +    dest[0] = a[0] - b[0];
 +    dest[1] = a[1] - b[1];
 +    dest[2] = a[2] - b[2];
@@ -1856,7 +1851,7 @@ index 8d4daa5..c1f2099 100644
  
          if (hudDisplayFlags & HUD_DISPLAY_FLAG_TIMER) {
 diff --git a/src/game/ingame_menu.c b/src/game/ingame_menu.c
-index b9a43df..f6f2d7f 100644
+index b9a43df..2ef25df 100644
 --- a/src/game/ingame_menu.c
 +++ b/src/game/ingame_menu.c
 @@ -22,6 +22,7 @@
@@ -1883,7 +1878,7 @@ index b9a43df..f6f2d7f 100644
      if (gDialogTextAlpha < 250) {
          gDialogTextAlpha += 25;
      }
-+    #ifndef NC_CODE_NOMENU
++#ifndef NC_CODE_NOMENU
 +    }
 +    else
 +    {
@@ -1892,7 +1887,7 @@ index b9a43df..f6f2d7f 100644
 +    }
 +    newcam_check_pause_buttons();
 +    newcam_render_option_text();
-+    #endif
++#endif
  
      return 0;
  }

@@ -220,7 +220,7 @@ static bool gfx_3ds_start_frame(void)
     if (cpu_time + gpu_time > 33.3f)
     {
         skip_debounce = 3; // skip a max of once every 4 frames
-        cpu_time, gpu_time = 0;
+        cpu_time = 0, gpu_time = 0;
         return false;
     }
 #endif
