@@ -58,6 +58,10 @@ static bool sUseBlend = false;
 // calling FrameDrawOn resets viewport
 static int viewport_x, viewport_y;
 static int viewport_width, viewport_height;
+// calling SetViewport resets scissor!
+static int scissor_x, scissor_y;
+static int scissor_width, scissor_height;
+static bool scissor;
 
 static C3D_Mtx modelView, projection;
 
@@ -471,12 +475,28 @@ static void gfx_citro3d_set_viewport(int x, int y, int width, int height)
 
 static void gfx_citro3d_set_scissor(int x, int y, int width, int height)
 {
-    if (gGfx3DSMode == GFX_3DS_MODE_NORMAL)
-        C3D_SetScissor(GPU_SCISSOR_NORMAL, y, x, y + height, x + width);
-    else if (gGfx3DSMode == GFX_3DS_MODE_AA_22 || gGfx3DSMode == GFX_3DS_MODE_WIDE_AA_12)
-        C3D_SetScissor(GPU_SCISSOR_NORMAL, y * 2, x * 2, (y + height) * 2, (x + width) * 2);
+    scissor = true;
+    if (gGfx3DSMode == GFX_3DS_MODE_AA_22 || gGfx3DSMode == GFX_3DS_MODE_WIDE_AA_12)
+    {
+        scissor_x = x * 2;
+        scissor_y = y * 2;
+        scissor_width = (x + width) * 2;
+        scissor_height = (y + height) * 2;
+    }
     else if (gGfx3DSMode == GFX_3DS_MODE_WIDE)
-        C3D_SetScissor(GPU_SCISSOR_NORMAL, y, x * 2, y + height, (x + width) * 2);
+    {
+        scissor_x = x * 2;
+        scissor_y = y;
+        scissor_width = (x + width) * 2;
+        scissor_height = y + height;
+    }
+    else // gGfx3DSMode == GFX_3DS_MODE_NORMAL
+    {
+        scissor_x = x;
+        scissor_y = y;
+        scissor_width = x + width;
+        scissor_height = y + height;
+    }
 }
 
 static void applyBlend()
@@ -726,16 +746,24 @@ static void gfx_citro3d_is_2d(bool is_2d)
 }
 #endif
 
+void gfx_citro3d_frame_draw_on(C3D_RenderTarget* target)
+{
+    target->used = true;
+    C3D_SetFrameBuf(&target->frameBuf);
+    C3D_SetViewport(viewport_y, viewport_x, viewport_height, viewport_width);
+    if (scissor)
+        C3D_SetScissor(GPU_SCISSOR_NORMAL, scissor_y, scissor_x, scissor_height, scissor_width);
+}
+
 static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris)
 {
+#ifdef ENABLE_N3DS_3D_MODE
     // reset model and projections
     Mtx_Identity(&modelView);
     Mtx_Identity(&projection);
 
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
-
-#ifdef ENABLE_N3DS_3D_MODE
     if ((gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22) && gSliderLevel > 0.0f)
     {
         sOrigBufIdx = sBufIdx;
@@ -755,8 +783,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
     }
 #endif
     // left screen
-    C3D_FrameDrawOn(gTarget);
-    C3D_SetViewport(viewport_y, viewport_x, viewport_height, viewport_width);
+    gfx_citro3d_frame_draw_on(gTarget);
     gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
 #ifdef ENABLE_N3DS_3D_MODE
     if ((gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22) && gSliderLevel > 0.0f)
@@ -773,8 +800,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
             C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
         }
         // draw right screen
-        C3D_FrameDrawOn(gTargetRight);
-        C3D_SetViewport(viewport_y, viewport_x, viewport_height, viewport_width);
+        gfx_citro3d_frame_draw_on(gTargetRight);
         gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
     }
 #endif
@@ -818,6 +844,7 @@ static void gfx_citro3d_start_frame(void)
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 
     sBufIdx = 0;
+    scissor = false;
     // reset viewport if video mode changed
     if (gGfx3DSMode != sCurrentGfx3DSMode)
     {
@@ -830,6 +857,13 @@ static void gfx_citro3d_start_frame(void)
 #ifdef ENABLE_N3DS_3D_MODE
     if (gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22)
         C3D_RenderTargetClear(gTargetRight, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
+#else
+    // reset model and projections
+    Mtx_Identity(&modelView);
+    Mtx_Identity(&projection);
+
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_modelView, &modelView);
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uLoc_projection, &projection);
 #endif
 }
 

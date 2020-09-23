@@ -113,6 +113,7 @@ static void initialise_screens()
     gTargetBottom = C3D_RenderTargetCreate(240, 320, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
     C3D_RenderTargetSetOutput(gTargetBottom, GFX_BOTTOM, GFX_LEFT,
         DISPLAY_TRANSFER_FLAGS | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
+    // consoleInit(GFX_BOTTOM, NULL);
 }
 
 static void gfx_3ds_init(UNUSED const char *game_name, UNUSED bool start_in_fullscreen)
