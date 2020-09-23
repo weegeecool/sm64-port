@@ -1,5 +1,5 @@
 diff --git a/Makefile b/Makefile
-index 723512b..4bc4c51 100644
+index 3eaae50..b68f597 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -264,7 +264,7 @@ else
@@ -11,7 +11,7 @@ index 723512b..4bc4c51 100644
  endif
  endif
  
-@@ -668,6 +668,8 @@ $(BUILD_DIR)/include/text_strings.h: $(BUILD_DIR)/include/text_menu_strings.h
+@@ -671,6 +671,8 @@ $(BUILD_DIR)/include/text_strings.h: $(BUILD_DIR)/include/text_menu_strings.h
  $(BUILD_DIR)/src/menu/file_select.o: $(BUILD_DIR)/include/text_strings.h
  $(BUILD_DIR)/src/menu/star_select.o: $(BUILD_DIR)/include/text_strings.h
  $(BUILD_DIR)/src/game/ingame_menu.o: $(BUILD_DIR)/include/text_strings.h
@@ -1808,7 +1808,7 @@ index f56ed02..36bb6d9 100644
  extern struct Object *gCutsceneFocus;
  extern struct Object *gSecondCameraFocus;
 diff --git a/src/game/game_init.c b/src/game/game_init.c
-index 0e1d914..f7a2b68 100644
+index a5cd80c..a3d03d1 100644
 --- a/src/game/game_init.c
 +++ b/src/game/game_init.c
 @@ -20,6 +20,8 @@
@@ -1819,8 +1819,8 @@ index 0e1d914..f7a2b68 100644
 +#include "pc/controller/controller_3ds.h"
  
  #ifdef TARGET_N3DS
- #include "pc/audio/audio_3ds_threading.h"
-@@ -613,6 +615,7 @@ void thread5_game_loop(UNUSED void *arg) {
+ #ifndef DISABLE_AUDIO
+@@ -615,6 +617,7 @@ void thread5_game_loop(UNUSED void *arg) {
  
      play_music(SEQ_PLAYER_SFX, SEQUENCE_ARGS(0, SEQ_SOUND_PLAYER), 0);
      set_sound_mode(save_file_get_sound_mode());

@@ -23,6 +23,7 @@ A prior copy of the game is required to extract the assets.
      - [60 FPS](enhancements/60fps.patch)
      - [Puppycam](enhancements/puppycam.patch)
      - [Show FPS](enhancements/fps.patch)
+ - Choice to disable audio at build-time; add build flag `DISABLE_AUDIO=1`
 
 ## Building
 

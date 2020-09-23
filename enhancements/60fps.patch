@@ -1942,7 +1942,7 @@ index 4fd5c43..7897c6b 100644
      Uint32 elapsed = SDL_GetTicks() - last_time;
  
 diff --git a/src/pc/pc_main.c b/src/pc/pc_main.c
-index 43bedb4..b3224b6 100644
+index 9d1fc44..970f4ba 100644
 --- a/src/pc/pc_main.c
 +++ b/src/pc/pc_main.c
 @@ -81,6 +81,25 @@ void send_display_list(struct SPTask *spTask) {
@@ -1981,5 +1981,5 @@ index 43bedb4..b3224b6 100644
 +    send_display_list(gGfxSPTask);
 +    gfx_end_frame();
  #ifdef TARGET_N3DS
+ #ifndef DISABLE_AUDIO
      LightEvent_Wait(&s_event_main);
- #endif

@@ -22,7 +22,9 @@
 #include <prevent_bss_reordering.h>
 
 #ifdef TARGET_N3DS
+#ifndef DISABLE_AUDIO
 #include "pc/audio/audio_3ds_threading.h"
+#endif
 #endif
 
 // FIXME: I'm not sure all of these variables belong in this file, but I don't
@@ -649,7 +651,9 @@ void game_loop_one_iteration(void) {
         read_controller_inputs();
         levelCommandAddr = level_script_execute(levelCommandAddr);
 #ifdef TARGET_N3DS
+#ifndef DISABLE_AUDIO
         LightEvent_Signal(&s_event_audio);
+#endif
 #endif
         display_and_vsync();
 

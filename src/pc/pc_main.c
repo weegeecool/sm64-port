@@ -95,7 +95,9 @@ void produce_one_frame(void) {
 #endif
     gfx_end_frame();
 #ifdef TARGET_N3DS
+#ifndef DISABLE_AUDIO
     LightEvent_Wait(&s_event_main);
+#endif
 #endif
 }
 
@@ -197,9 +199,11 @@ void main_func(void) {
     }
 #endif
 #ifdef TARGET_N3DS
+#ifndef DISABLE_AUDIO
     if (audio_api == NULL && audio_3ds.init()) {
         audio_api = &audio_3ds;
     }
+#endif
 #endif
     if (audio_api == NULL) {
         audio_api = &audio_null;
