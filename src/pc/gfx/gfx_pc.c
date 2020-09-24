@@ -16,6 +16,10 @@
 #include "gfx_rendering_api.h"
 #include "gfx_screen_config.h"
 
+#ifdef ENABLE_N3DS_3D_MODE
+#include "gfx_3ds.h"
+#endif
+
 #define SUPPORT_CHECK(x) assert(x)
 
 // SCALE_M_N: upscale/downscale M-bit integer to N-bit
@@ -651,8 +655,20 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx *verti
 
         // trivial clip rejection
         d->clip_rej = 0;
+#ifdef ENABLE_N3DS_3D_MODE
+    if ((gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22) && gSliderLevel > 0.0f) { // change clipping when 3D is enabled
+        float wx = w * 1.2f; // expanded w-range for testing vertex's x position, value is approximate for max sliderlevel
+        if (x < -wx) d->clip_rej |= 1; // only x should be tested against the expanded range
+        if (x > wx) d->clip_rej |= 2;
+    }
+    else {
         if (x < -w) d->clip_rej |= 1;
         if (x > w) d->clip_rej |= 2;
+    }
+#else
+        if (x < -w) d->clip_rej |= 1;
+        if (x > w) d->clip_rej |= 2;
+#endif
         if (y < -w) d->clip_rej |= 4;
         if (y > w) d->clip_rej |= 8;
         if (z < -w) d->clip_rej |= 16;
