@@ -18,6 +18,10 @@
 #include "gfx/gfx_glx.h"
 #include "gfx/gfx_sdl.h"
 #include "gfx/gfx_dummy.h"
+#ifdef TARGET_GX
+#include "gfx/gfx_gx_wm.h"
+#include "gfx/gfx_gx.h"
+#endif
 
 #include "audio/audio_api.h"
 #include "audio/audio_wasapi.h"
@@ -25,6 +29,9 @@
 #include "audio/audio_alsa.h"
 #include "audio/audio_sdl.h"
 #include "audio/audio_null.h"
+#ifdef TARGET_GX
+#include "audio/audio_gx.h"
+#endif
 
 #include "controller/controller_keyboard.h"
 
@@ -81,7 +88,7 @@ void send_display_list(struct SPTask *spTask) {
 void produce_one_frame(void) {
     gfx_start_frame();
     game_loop_one_iteration();
-    
+
     int samples_left = audio_api->buffered();
     u32 num_audio_samples = samples_left < audio_api->get_desired_buffered() ? SAMPLES_HIGH : SAMPLES_LOW;
     //printf("Audio samples: %d %u\n", samples_left, num_audio_samples);
@@ -95,7 +102,7 @@ void produce_one_frame(void) {
     }
     //printf("Audio samples before submitting: %d\n", audio_api->buffered());
     audio_api->play((u8 *)audio_buffer, 2 * num_audio_samples * 4);
-    
+
     gfx_end_frame();
 }
 
@@ -145,8 +152,8 @@ void main_func(void) {
     main_pool_init();
     gGfxAllocOnlyPool = alloc_only_pool_init();
 #else
-    static u64 pool[0x165000/8 / 4 * sizeof(void *)];
-    main_pool_init(pool, pool + sizeof(pool) / sizeof(pool[0]));
+    static u8 pool[DOUBLE_SIZE_ON_64_BIT(0x165000)] __attribute__ ((aligned(64)));
+    main_pool_init(pool, pool + sizeof(pool));
 #endif
     gEffectsMemoryPool = mem_pool_init(0x4000, MEMORY_POOL_LEFT);
 
@@ -174,13 +181,16 @@ void main_func(void) {
 #elif defined(ENABLE_GFX_DUMMY)
     rendering_api = &gfx_dummy_renderer_api;
     wm_api = &gfx_dummy_wm_api;
+#elif defined(TARGET_GX)
+    rendering_api = &gfx_gx_api;
+    wm_api = &gfx_gx_wm_api;
 #endif
 
     gfx_init(wm_api, rendering_api, "Super Mario 64 PC-Port", configFullscreen);
-    
+
     wm_api->set_fullscreen_changed_callback(on_fullscreen_changed);
     wm_api->set_keyboard_callbacks(keyboard_on_key_down, keyboard_on_key_up, keyboard_on_all_keys_up);
-    
+
 #if HAVE_WASAPI
     if (audio_api == NULL && audio_wasapi.init()) {
         audio_api = &audio_wasapi;
@@ -199,6 +209,11 @@ void main_func(void) {
 #ifdef TARGET_WEB
     if (audio_api == NULL && audio_sdl.init()) {
         audio_api = &audio_sdl;
+    }
+#endif
+#ifdef TARGET_GX
+    if (audio_api == NULL && audio_gx.init()) {
+        audio_api = &audio_gx;
     }
 #endif
     if (audio_api == NULL) {
