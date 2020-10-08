@@ -380,6 +380,7 @@ Gfx *geo_act_selector_strings(s16 callContext, UNUSED struct GraphNode *node) {
 #ifdef ENABLE_N3DS_3D_MODE
         gDPForceFlush(gDisplayListHead++);
         gDPSet2d(gDisplayListHead++, 1);
+        gDPSetIod(gDisplayListHead++, iodStarSelect);
 #endif
         print_act_selector_strings();
 #ifdef ENABLE_N3DS_3D_MODE
