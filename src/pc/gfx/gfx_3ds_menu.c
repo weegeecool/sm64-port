@@ -3,11 +3,7 @@
 #include "gfx_3ds.h"
 #include "gfx_3ds_menu.h"
 
-#ifdef ENABLE_N3DS_3D_MODE
 struct gfx_configuration gfx_config = {false, false}; // AA off, 800px off
-#else
-struct gfx_configuration gfx_config = {true, false}; // AA on, 800px off
-#endif
 
 static C3D_Mtx modelView, projection;
 static int buffer_offset;
@@ -101,17 +97,21 @@ menu_action gfx_3ds_menu_on_touch(int x, int y)
     // aa
     if (is_inside_box(touch_x, touch_y, 48, 32, 64, 64))
     {
-#ifndef ENABLE_N3DS_3D_MODE
-        gfx_config.useAA = !gfx_config.useAA;
-        return CONFIG_CHANGED;
-#else
+        // cannot use AA in 3D mode
+        if (gfx_config.useWide)
+        {
+            gfx_config.useAA = !gfx_config.useAA;
+            return CONFIG_CHANGED;
+        }
         return DO_NOTHING;
-#endif
     }
     // screen mode
     if (is_inside_box(touch_x, touch_y, 208, 32, 64, 64))
     {
         gfx_config.useWide = !gfx_config.useWide;
+        // disable AA if 3D mode
+        if (!gfx_config.useWide && gfx_config.useAA)
+            gfx_config.useAA = false;
         return CONFIG_CHANGED;
     }
     // resume

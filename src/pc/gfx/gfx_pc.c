@@ -16,7 +16,7 @@
 #include "gfx_rendering_api.h"
 #include "gfx_screen_config.h"
 
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
 #include "gfx_3ds.h"
 #endif
 
@@ -157,7 +157,7 @@ static size_t buf_vbo_num_tris;
 static struct GfxWindowManagerAPI *gfx_wapi;
 static struct GfxRenderingAPI *gfx_rapi;
 
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
 static void gfx_set_2d(int mode_2d)
 {
     gfx_rapi->set_2d(mode_2d);
@@ -683,7 +683,7 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx *verti
 
         // trivial clip rejection
         d->clip_rej = 0;
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
     if ((gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22) && gSliderLevel > 0.0f) {
         float wMod = w * 1.2f; // expanded w-range for testing clip rejection
         if (x < -wMod) d->clip_rej |= 1;
@@ -1592,14 +1592,14 @@ static void gfx_run_dl(Gfx* cmd) {
             case G_SETCIMG:
                 gfx_dp_set_color_image(C0(21, 3), C0(19, 2), C0(0, 11), seg_addr(cmd->words.w1));
                 break;
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
             case G_SPECIAL_1:
                 gfx_set_2d(cmd->words.w1);
                 break;
             case G_SPECIAL_2:
                 gfx_flush();
                 break;
-                
+
             case G_SPECIAL_4:
                 gfx_set_iod(cmd->words.w1);
                 break;

@@ -36,13 +36,11 @@ static void deinitialise_screens()
         C3D_RenderTargetDelete(gTarget);
         gTarget = NULL;
     }
-#ifdef ENABLE_N3DS_3D_MODE
     if (gTargetRight != NULL)
     {
         C3D_RenderTargetDelete(gTargetRight);
         gTargetRight = NULL;
     }
-#endif
     if (gTargetBottom != NULL)
     {
         C3D_RenderTargetDelete(gTargetBottom);
@@ -57,12 +55,6 @@ static void initialise_screens()
 
     bool useAA = gfx_config.useAA;
     bool useWide =  gfx_config.useWide && n3ds_model != 3; // old 2DS does not support 800px
-
-#ifdef ENABLE_N3DS_3D_MODE
-    // Not enough VRAM for 3D + AA + bottom screen
-    if (!useWide)
-        useAA = false;
-#endif
 
     u32 transferFlags = DISPLAY_TRANSFER_FLAGS;
 
@@ -82,11 +74,10 @@ static void initialise_screens()
     if (!useWide)
     {
         gfxSetWide(false);
-#ifdef ENABLE_N3DS_3D_MODE
+        // TODO: reinitialise screens when iod changes from/to 0.0
         gTargetRight = C3D_RenderTargetCreate(height, width, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
         C3D_RenderTargetSetOutput(gTargetRight, GFX_TOP, GFX_RIGHT, transferFlags);
         gfxSet3D(true);
-#endif
     }
     else
     {

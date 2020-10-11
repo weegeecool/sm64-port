@@ -23,8 +23,6 @@ TARGET_N64 ?= 0
 TARGET_WEB ?= 0
 # Build for Nintendo 3DS
 TARGET_N3DS ?= 1
-# Enable experimental 3D mode?
-ENABLE_N3DS_3D_MODE ?= 0
 # Compiler to use (ido or gcc)
 COMPILER ?= ido
 
@@ -543,10 +541,6 @@ endif
 
 CC_CHECK := $(CC) -fsyntax-only -fsigned-char $(INCLUDE_CFLAGS) -Wall -Wextra -Wno-format-security -D_LANGUAGE_C $(VERSION_CFLAGS) $(MATCH_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) $(GRUCODE_CFLAGS)
 CFLAGS := $(OPT_FLAGS) $(INCLUDE_CFLAGS) -D_LANGUAGE_C $(VERSION_CFLAGS) $(MATCH_CFLAGS) $(PLATFORM_CFLAGS) $(GFX_CFLAGS) $(GRUCODE_CFLAGS) $(MARCH_FLAGS) -fno-strict-aliasing -fwrapv
-
-ifeq ($(ENABLE_N3DS_3D_MODE),1)
-  CFLAGS += -DENABLE_N3DS_3D_MODE
-endif
 
 ASFLAGS := -I include -I $(BUILD_DIR) $(VERSION_ASFLAGS)
 

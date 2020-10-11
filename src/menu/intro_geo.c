@@ -37,7 +37,7 @@ const Gfx *introBackgroundDlRows[] = { title_screen_bg_dl_0A000130, title_screen
 // intro screen background texture X offsets
 float introBackgroundOffsetX[] = {
 #ifdef TARGET_N3DS
-    -40.0, 40.0, 120.0, 200.0, 280.0, -40.0, 40.0, 120.0, 200.0, 280.0, -40.0, 40.0, 120.0, 200.0, 280.0, 
+    -40.0, 40.0, 120.0, 200.0, 280.0, -40.0, 40.0, 120.0, 200.0, 280.0, -40.0, 40.0, 120.0, 200.0, 280.0,
 #else
     0.0, 80.0, 160.0, 240.0, 0.0, 80.0, 160.0, 240.0, 0.0, 80.0, 160.0, 240.0,
 #endif
@@ -181,7 +181,7 @@ Gfx *intro_backdrop_one_image(s32 index, s8 *backgroundTable) {
     displayList = alloc_display_list(36 * sizeof(*displayList));
     displayListIter = displayList;
     vIntroBgTable = segmented_to_virtual(introBackgroundTextureType[backgroundTable[index]]);
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
     guTranslate(mtx, introBackgroundOffsetX[index], introBackgroundOffsetY[index], -1.0f);
 #else
     guTranslate(mtx, introBackgroundOffsetX[index], introBackgroundOffsetY[index], 0.0f);
@@ -189,8 +189,8 @@ Gfx *intro_backdrop_one_image(s32 index, s8 *backgroundTable) {
     gSPMatrix(displayListIter++, mtx, G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_PUSH);
     gSPDisplayList(displayListIter++, &title_screen_bg_dl_0A000118);
     for (i = 0; i < 4; ++i) {
-        gDPLoadTextureBlock(displayListIter++, vIntroBgTable[i], G_IM_FMT_RGBA, G_IM_SIZ_16b, 80, 20, 0, 
-                            G_TX_CLAMP, G_TX_CLAMP, 7, 6, G_TX_NOLOD, G_TX_NOLOD)    
+        gDPLoadTextureBlock(displayListIter++, vIntroBgTable[i], G_IM_FMT_RGBA, G_IM_SIZ_16b, 80, 20, 0,
+                            G_TX_CLAMP, G_TX_CLAMP, 7, 6, G_TX_NOLOD, G_TX_NOLOD)
         gSPDisplayList(displayListIter++, introBackgroundDlRows[i]);
     }
     gSPPopMatrix(displayListIter++, G_MTX_MODELVIEW);

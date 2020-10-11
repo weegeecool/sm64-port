@@ -75,7 +75,6 @@ static bool scissor;
 
 static C3D_Mtx modelView, projection;
 
-#ifdef ENABLE_N3DS_3D_MODE
 static int sOrigBufIdx;
 static int s2DMode;
 float iodZ = 8.0f;
@@ -84,10 +83,10 @@ float iodW = 16.0f;
 void stereoTilt(C3D_Mtx* mtx, float z, float w)
 {
     /** ********************** Default L/R stereo perspective function with x/y tilt removed **********************
-    
+
         Preserving this to show what the proper function *should* look like.
         TODO: move to gfx_pc before RDP's mv*p happens, for proper and portable stereoscopic support
-        
+
     float fovy_tan = tanf(fovy * 0.5f * M_PI / 180.0f); // equals 1.0 when FOV is 90
     float fovy_tan_aspect = fovy_tan * aspect; // equals 1.0 because we are being passed an existing mv*p matrix
     float shift = iod / (2.0f*screen);
@@ -138,7 +137,6 @@ void gfx_citro3d_set_iod(float z, float w)
     iodZ = z;
     iodW = w;
 }
-#endif
 
 static bool gfx_citro3d_z_is_from_0_to_1(void)
 {
@@ -759,7 +757,6 @@ void gfx_citro3d_frame_draw_on(C3D_RenderTarget* target)
 
 static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_len, size_t buf_vbo_num_tris)
 {
-#ifdef ENABLE_N3DS_3D_MODE
     if ((gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22) && gSliderLevel > 0.0f)
     {
         // left screen
@@ -767,7 +764,7 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
         stereoTilt(&projection, -iodZ, -iodW);
         gfx_citro3d_frame_draw_on(gTarget);
         gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
-        
+
         // right screen
         sBufIdx = sOrigBufIdx;
         stereoTilt(&projection, iodZ, iodW);
@@ -775,7 +772,6 @@ static void gfx_citro3d_draw_triangles_helper(float buf_vbo[], size_t buf_vbo_le
         gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
         return;
     }
-#endif
     gfx_citro3d_frame_draw_on(gTarget);
     gfx_citro3d_draw_triangles(buf_vbo, buf_vbo_len, buf_vbo_num_tris);
 }
@@ -827,13 +823,11 @@ static void gfx_citro3d_start_frame(void)
     }
 
     C3D_RenderTargetClear(gTarget, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
-    C3D_RenderTargetClear(gTargetBottom, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
-#ifdef ENABLE_N3DS_3D_MODE
     if (gGfx3DSMode == GFX_3DS_MODE_NORMAL || gGfx3DSMode == GFX_3DS_MODE_AA_22)
         C3D_RenderTargetClear(gTargetRight, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
-#endif
+    C3D_RenderTargetClear(gTargetBottom, C3D_CLEAR_ALL, 0x000000FF, 0xFFFFFFFF);
 
-    // reset model
+    // reset model view matrix
     Mtx_Identity(&modelView);
     // 3DS screen is rotated 90 degrees
     Mtx_RotateZ(&modelView, 0.75f*M_TAU, false);
@@ -924,10 +918,8 @@ struct GfxRenderingAPI gfx_citro3d_api = {
     gfx_citro3d_finish_render,
     gfx_citro3d_set_fog,
     gfx_citro3d_set_fog_color,
-#ifdef ENABLE_N3DS_3D_MODE
     gfx_citro3d_set_2d,
     gfx_citro3d_set_iod
-#endif
 };
 
 #endif

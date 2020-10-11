@@ -117,7 +117,7 @@
 #define G_SPECIAL_1		0xd5
 #define G_SPECIAL_2		0xd4
 #define G_SPECIAL_3		0xd3
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
 #define G_SPECIAL_4		0xd2
 #endif
 
@@ -4798,7 +4798,7 @@ typedef union {
 #define	gDPNoOpTag(pkt, tag)	gDPParam(pkt, G_NOOP, tag)
 #define	gsDPNoOpTag(tag)	gsDPParam(G_NOOP, tag)
 
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
 #define gDPSet2d(pkt, mode) \
 { \
 	Gfx *_g = (Gfx *)(pkt);	\

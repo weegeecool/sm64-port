@@ -121,7 +121,7 @@ void print_intro_text(void) {
 #ifdef VERSION_EU
             print_text(20, 20, "START");
 #else
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
             print_press_start(20, 38, "PRESS");
             print_press_start(20, 20, "START");
 #else
@@ -374,7 +374,7 @@ void render_game(void) {
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                       SCREEN_HEIGHT - BORDER_HEIGHT);
 
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
         gDPForceFlush(gDisplayListHead++); // flush anything
         gDPSet2d(gDisplayListHead++, 1); // HUD, text labels and cutscene text are 2D
 #endif
@@ -383,8 +383,8 @@ void render_game(void) {
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         render_text_labels();
         do_cutscene_handler();
-        
-#ifdef ENABLE_N3DS_3D_MODE
+
+#ifdef TARGET_N3DS
         gDPForceFlush(gDisplayListHead++); // flush HUD, text labels and cutscene text
         gDPSet2d(gDisplayListHead++, 2); // set mode2
 
@@ -393,10 +393,10 @@ void render_game(void) {
         gDPForceFlush(gDisplayListHead++); // flush press start
         gDPSet2d(gDisplayListHead++, 3); // credits are mode3
 #endif
-        
+
         print_displaying_credits_entry();
 
-#ifdef ENABLE_N3DS_3D_MODE
+#ifdef TARGET_N3DS
         gDPForceFlush(gDisplayListHead++); // flush credits
         gDPSet2d(gDisplayListHead++, 1); // dialog/menus are 2D
 #endif
@@ -404,8 +404,8 @@ void render_game(void) {
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                       SCREEN_HEIGHT - BORDER_HEIGHT);
         gPauseScreenMode = render_menus_and_dialogs();
-        
-#ifdef ENABLE_N3DS_3D_MODE
+
+#ifdef TARGET_N3DS
         gDPForceFlush(gDisplayListHead++); // flush dialog/menus
         gDPSet2d(gDisplayListHead++, 0); // reset 2D mode
 #endif
@@ -436,15 +436,15 @@ void render_game(void) {
             }
         }
     } else {
-        
-#ifdef ENABLE_N3DS_3D_MODE
+
+#ifdef TARGET_N3DS
         gDPForceFlush(gDisplayListHead++); // flush anything
         gDPSet2d(gDisplayListHead++, 1); // text labels are 2D
 #endif
 
         render_text_labels();
-        
-#ifdef ENABLE_N3DS_3D_MODE
+
+#ifdef TARGET_N3DS
         gDPForceFlush(gDisplayListHead++); // flush text labels
         gDPSet2d(gDisplayListHead++, 0); // reset 2D mode
 #endif
