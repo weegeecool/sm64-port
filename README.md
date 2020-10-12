@@ -57,28 +57,11 @@ cd sm64-port
 cp /path/to/your/baserom.us.z64 ./ # change 'us' to 'eu', 'jp' or 'sh' as appropriate
 ```
 
-**Checkout this branch:**
-
-```sh
-git checkout 3ds-port
-```
-
 **Build with pre-baked image:**
 
 Change `VERSION=us` if applicable.
 ```sh
-docker run --rm -v $(pwd):/sm64  \
-  markstreet/sm64:3ds \
-  make VERSION=us --jobs 4
-```
-
-**Create .cia from .3dsx (Optional):**
-
-```sh
-docker run --rm -v $(pwd):/data \
-  markstreet/3dstools:0.1 \
-  sh -c "cxitool build/us_3ds/sm64.us.f3dex2e.3dsx sm64.cxi && \
-  makerom -f cia -o sm64.cia -target t -i sm64.cxi:0:0 -ignoresign"
+docker run --rm -v $(pwd):/sm64 markstreet/sm64:3ds make --jobs 4 VERSION=us cia
 ```
 
 ### Linux / WSL (Ubuntu)
@@ -97,6 +80,7 @@ apt-get update && \
         pkg-config \
         python3 \
         wget \
+        unzip \
         zlib1g-dev
 
 wget https://github.com/devkitPro/pacman/releases/download/v1.0.2/devkitpro-pacman.amd64.deb \
@@ -106,7 +90,13 @@ wget https://github.com/devkitPro/pacman/releases/download/v1.0.2/devkitpro-pacm
   rm devkitpro.deb
 
 dkp-pacman -Syu 3ds-dev --noconfirm
-# if this ^^ fails with error about archive format, use a VPN to get yourself out of the USA and then try again.
+
+wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.17/makerom-v0.17-ubuntu_x86_64.zip \
+  -O makerom.zip && \
+  echo 976c17a78617e157083a8e342836d35c47a45940f9d0209ee8fd210a81ba7bc0  makerom.zip | sha256sum --check && \
+  unzip -d /opt/devkitpro/tools/bin/ makerom.zip && \
+  chmod +x /opt/devkitpro/tools/bin/makerom && \
+  rm makerom.zip
 
 exit
 
@@ -126,7 +116,8 @@ export DEVKITPRO=/opt/devkitpro
 export DEVKITARM=/opt/devkitpro/devkitARM
 export DEVKITPPC=/opt/devkitpro/devkitPPC
 
-make -j4
+make --jobs 4
+make cia # optional if you want a .cia
 ```
 
 ### Windows (MSYS2)
@@ -180,13 +171,25 @@ MINGW64 may close itself when done, if it does, find `MSYS2 MinGW 64bit` in your
 **Install Dependencies:**
 
 ```sh
-pacman -S 3ds-dev git make python3 mingw-w64-x86_64-gcc --noconfirm
+pacman -S 3ds-dev git make python3 mingw-w64-x86_64-gcc unzip --noconfirm
+```
+
+**Download makerom:**
+
+```sh
+wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.17/makerom-v0.17-win_x86_64.zip
+```
+
+**Extract makerom:**
+
+```sh
+unzip -d /opt/devkitpro/tools/bin/ makerom-v0.17-win_x86_64.zip
 ```
 
 **Setup Environment Variables:**
 
 ```sh
-export PATH=$PATH:/opt/devkitpro/tools/bin && echo "OK!"
+export PATH="$PATH:/opt/devkitpro/tools/bin" && echo "OK!"
 export DEVKITPRO=/opt/devkitpro && echo "OK!"
 export DEVKITARM=/opt/devkitpro/devkitARM && echo "OK!"
 export DEVKITPPC=/opt/devkitpro/devkitPPC && echo "OK!"
@@ -211,10 +214,16 @@ This assumes that you have create the directory `c:\temp` via Windows Explorer a
 cp /c/temp/baserom.us.z64 ./ && echo "OK!" # change 'us' to 'eu', 'jp' or 'sh' as appropriate
 ```
 
-**Compile:**
+**Compile 3dsx:**
 
 ```sh
 make VERSION=us --jobs 4 # change 'us' to 'eu', 'jp' or 'sh' as appropriate
+```
+
+**Create .cia:**
+
+```sh
+make VERSION=us cia # change 'us' to 'eu', 'jp' or 'sh' as appropriate
 ```
 
 ### Other Operating Systems
@@ -257,6 +266,7 @@ sm64
 ## Credits
 
  - Credits go to [Gericom](https://github.com/Gericom) for the [sm64_3ds](https://github.com/sm64-port/sm64_3ds) port that this flavour is based off.
+ - All those who have contributed PRs!
 
 ## Contributing
 

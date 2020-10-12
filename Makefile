@@ -215,7 +215,9 @@ else
   EXE := $(BUILD_DIR)/$(TARGET).exe
   else
     ifeq ($(TARGET_N3DS),1)
-    EXE := $(BUILD_DIR)/$(TARGET).3dsx
+      EXE := $(BUILD_DIR)/$(TARGET).3dsx
+      ELF := $(BUILD_DIR)/$(TARGET).elf
+      CIA := $(BUILD_DIR)/$(TARGET).cia
     else
     EXE := $(BUILD_DIR)/$(TARGET)
     endif
@@ -589,6 +591,10 @@ else
 all: $(EXE)
 endif
 
+ifeq ($(TARGET_N3DS),1)
+cia: $(CIA)
+endif
+
 clean:
 	$(RM) -r $(BUILD_DIR_BASE)
 
@@ -888,9 +894,15 @@ SMDH_DESCRIPTION ?= Super Mario 64 3DS Port
 SMDH_AUTHOR ?= mkst
 SMDH_ICON := icon.smdh
 
-$(EXE): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o $(SMDH_ICON)
-	$(LD) -L $(BUILD_DIR) -o $@.elf $(O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o $(MINIMAP_T3X_O) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(LDFLAGS)
-	3dsxtool $@.elf $@ --smdh=$(BUILD_DIR)/$(SMDH_ICON)
+$(ELF): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o $(SMDH_ICON)
+	$(LD) -L $(BUILD_DIR) -o $@ $(O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o $(MINIMAP_T3X_O) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(LDFLAGS)
+
+$(EXE): $(ELF)
+	3dsxtool $< $@ --smdh=$(BUILD_DIR)/$(SMDH_ICON)
+
+$(CIA): $(ELF)
+	@echo "Generating $@, please wait..."
+	makerom -f cia -o "$@" -rsf 3ds/template.rsf -target t -elf "$<" -icon 3ds/icon.icn -banner 3ds/banner.bnr
 
 # stolen from /opt/devkitpro/devkitARM/base_tools
 define bin2o
@@ -910,7 +922,6 @@ $(BUILD_DIR)/src/pc/gfx/gfx_3ds_menu.o: $(MINIMAP_T3X_HEADERS)
 
 %.t3s: %.png
 	@printf -- "-f rgba -z auto\n../../../../../$(<)\n" > $(BUILD_DIR)/$@
-
 
 %.smdh: %.png
 	smdhtool --create "$(SMDH_TITLE)" "$(SMDH_DESCRIPTION)" "$(SMDH_AUTHOR)" $< $(BUILD_DIR)/$@
