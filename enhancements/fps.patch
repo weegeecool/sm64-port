@@ -1,8 +1,8 @@
 diff --git a/src/game/game_init.c b/src/game/game_init.c
-index 64ee411..658ab76 100644
+index 64ee411..1887cfb 100644
 --- a/src/game/game_init.c
 +++ b/src/game/game_init.c
-@@ -65,6 +65,24 @@ struct DemoInput *gCurrDemoInput = NULL; // demo input sequence
+@@ -65,6 +65,29 @@ struct DemoInput *gCurrDemoInput = NULL; // demo input sequence
  u16 gDemoInputListID = 0;
  struct DemoInput gRecordedDemoInput = { 0 }; // possibly removed in EU. TODO: Check
  
@@ -15,9 +15,14 @@ index 64ee411..658ab76 100644
 +        gRenderFPS ^= 1;
 +    }
 +
++#ifdef _60FPS_PATCH
++    float multiplier = 2.0f;
++#else
++    float multiplier = 1.0f;
++#endif
 +    if (gRenderFPS) {
 +        OSTime newTime = osGetTime();
-+        float fps = 1000000.0f / (newTime - gLastOSTime);
++        float fps = multiplier * 1000000.0f / (newTime - gLastOSTime);
 +
 +        print_text_fmt_int(GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(22), 184, "FPS %d", fps);
 +        gLastOSTime = newTime;
@@ -27,7 +32,7 @@ index 64ee411..658ab76 100644
  /**
   * Initializes the Reality Display Processor (RDP).
   * This function initializes settings such as texture filtering mode,
-@@ -670,7 +688,7 @@ void game_loop_one_iteration(void) {
+@@ -670,7 +693,7 @@ void game_loop_one_iteration(void) {
  #endif
  #endif
          display_and_vsync();
