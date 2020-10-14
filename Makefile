@@ -503,6 +503,9 @@ ifeq ($(TARGET_N3DS),1)
   ifeq ($(DISABLE_AUDIO),1)
     PLATFORM_CFLAGS += -DDISABLE_AUDIO
   endif
+  ifeq ($(DISABLE_N3DS_FRAMESKIP),1)
+    PLATFORM_CFLAGS += -DDISABLE_N3DS_FRAMESKIP
+  endif
 endif
 
 PLATFORM_CFLAGS += -DNO_SEGMENTED_MEMORY
@@ -661,7 +664,7 @@ ALL_DIRS := $(BUILD_DIR) $(addprefix $(BUILD_DIR)/,$(SRC_DIRS) $(ASM_DIRS) $(GOD
 
 ifeq ($(TARGET_N3DS),1)
   # create build dir for .t3x etc
-  ALL_DIRS += $(BUILD_DIR)/$(MINIMAP_TEXTURES)
+  ALL_DIRS += $(BUILD_DIR)/$(MINIMAP_TEXTURES) $(BUILD_DIR)/3ds
 endif
 
 # Make sure build directory exists before compiling anything
@@ -892,7 +895,7 @@ $(BUILD_DIR)/src/pc/gfx/shader.shbin.o : src/pc/gfx/shader.v.pica
 SMDH_TITLE ?= Super Mario 64
 SMDH_DESCRIPTION ?= Super Mario 64 3DS Port
 SMDH_AUTHOR ?= mkst
-SMDH_ICON := icon.smdh
+SMDH_ICON := 3ds/icon.smdh
 
 $(ELF): $(O_FILES) $(MIO0_FILES:.mio0=.o) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o $(SMDH_ICON)
 	$(LD) -L $(BUILD_DIR) -o $@ $(O_FILES) $(BUILD_DIR)/src/pc/gfx/shader.shbin.o $(MINIMAP_T3X_O) $(SOUND_OBJ_FILES) $(ULTRA_O_FILES) $(GODDARD_O_FILES) $(LDFLAGS)

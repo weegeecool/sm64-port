@@ -18,7 +18,8 @@ A prior copy of the game is required to extract the assets.
      - Enable/disable 800px mode
      - Exit the game
  - Support injection of [SMDH](https://www.3dbrew.org/wiki/SMDH) file into the .3dsx
-     - Change the `icon.png` in the base of this repository before building.
+     - Change the `3ds/icon.png` in the base of this repository before building.
+ - To change the CIA banner, modify the `3ds/icon.png` and `3ds/banner.png` and use [bannertool](https://github.com/Steveice10/bannertool/releases/tag/1.2.0) to generate new `icon.icn` and `banner.bnr` respectively.
  - Patches updated for 3DS:
      - [60 FPS](enhancements/60fps.patch)
      - [Puppycam](enhancements/puppycam.patch)
