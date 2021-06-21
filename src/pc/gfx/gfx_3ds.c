@@ -75,9 +75,12 @@ static void initialise_screens()
     if (!useWide)
     {
         gfxSetWide(false);
-        gTargetRight = C3D_RenderTargetCreate(height, width, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
-        C3D_RenderTargetSetOutput(gTargetRight, GFX_TOP, GFX_RIGHT, transferFlags);
-        gfxSet3D(true);
+        if (n3ds_model != 3)
+        {
+            gTargetRight = C3D_RenderTargetCreate(height, width, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+            C3D_RenderTargetSetOutput(gTargetRight, GFX_TOP, GFX_RIGHT, transferFlags);
+            gfxSet3D(true);
+        }
     }
     else
     {
@@ -109,17 +112,17 @@ static void initialise_screens()
 
 static void gfx_3ds_update_stereoscopy(void)
 {
-	if(gSliderLevel > 0.0)
+    if(gSliderLevel > 0.0)
     {
-		gfx_config.useAA = false;
-		gfx_config.useWide = false;
-	} else
+        gfx_config.useAA = false;
+        gfx_config.useWide = false;
+    } else
     {
         // default to true; this is different to initialisation where both are false
-		gfx_config.useAA = true;
-		gfx_config.useWide = true;
-	}
-	deinitialise_screens();
+        gfx_config.useAA = true;
+        gfx_config.useWide = n3ds_model != 3; // default to true except on O3DS
+    }
+    deinitialise_screens();
     initialise_screens();
 }
 
@@ -219,7 +222,7 @@ static void gfx_3ds_handle_events(void)
     float st = 0.0;
     if ((prevSliderLevel > st && gSliderLevel <= st) || (prevSliderLevel <= st && gSliderLevel > st))
     {
-		gfx_3ds_update_stereoscopy();
+        gfx_3ds_update_stereoscopy();
     }
 }
 
