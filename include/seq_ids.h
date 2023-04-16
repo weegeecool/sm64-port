@@ -42,4 +42,4 @@ enum SeqId {
     SEQ_COUNT
 };
 
-#endif // SEQ_IDS_H
+#endif

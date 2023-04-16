@@ -136,8 +136,8 @@ def main():
         try:
             with open(fname, "rb") as f:
                 roms[lang] = f.read()
-        except Exception as e:
-            print("Failed to open " + fname + "! " + str(e))
+        except:
+            print("Failed to open " + fname + ". Please ensure it exists!")
             sys.exit(1)
         sha1 = hashlib.sha1(roms[lang]).hexdigest()
         with open("sm64." + lang + ".sha1", "r") as f:
@@ -152,15 +152,9 @@ def main():
             )
             sys.exit(1)
 
-    make = "make"
-
-    for path in os.environ["PATH"].split(os.pathsep):
-        if os.path.isfile(os.path.join(path, "gmake")):
-            make = "gmake"
-
     # Make sure tools exist
     subprocess.check_call(
-        [make, "-s", "-C", "tools/", "n64graphics", "skyconv", "mio0", "aifc_decode"]
+        ["make", "-s", "-C", "tools/", "n64graphics", "skyconv", "mio0", "aifc_decode"]
     )
 
     # Go through the assets in roughly alphabetical order (but assets in the same
@@ -221,11 +215,9 @@ def main():
             input = image[pos : pos + size]
             os.makedirs(os.path.dirname(asset), exist_ok=True)
             if asset.endswith(".png"):
-                png_file = tempfile.NamedTemporaryFile(prefix="asset", delete=False)
-                try:
+                with tempfile.NamedTemporaryFile(prefix="asset", delete=False) as png_file:
                     png_file.write(input)
                     png_file.flush()
-                    png_file.close()
                     if asset.startswith("textures/skyboxes/") or asset.startswith("levels/ending/cake"):
                         if asset.startswith("textures/skyboxes/"):
                             imagetype = "sky"
@@ -261,9 +253,6 @@ def main():
                             ],
                             check=True,
                         )
-                finally:
-                    png_file.close()
-                    os.remove(png_file.name)
             else:
                 with open(asset, "wb") as f:
                     f.write(input)

@@ -25,4 +25,4 @@
 #define TRAJECTORY_END() \
     -1
 
-#endif // LEVEL_MISC_MACROS_H
+#endif

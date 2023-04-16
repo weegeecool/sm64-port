@@ -2,36 +2,32 @@ FROM ubuntu:18.04 as build
 
 RUN apt-get update && \
     apt-get install -y \
-      binutils-mips-linux-gnu \
-      bsdmainutils \
-      build-essential \
-      libaudiofile-dev \
-      pkg-config \
-      python3 \
-      wget \
-      unzip \
-      zlib1g-dev
+        binutils-mips-linux-gnu \
+        bsdmainutils \
+        build-essential \
+        git \
+        libaudiofile-dev \
+        libsdl2-dev \
+        pkg-config \
+        python3 \
+        wget \
+        zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/devkitPro/pacman/releases/download/v1.0.2/devkitpro-pacman.amd64.deb \
-  -O devkitpro.deb && \
-  echo ebc9f199da9a685e5264c87578efe29309d5d90f44f99f3dad9dcd96323fece3 devkitpro.deb | sha256sum --check && \
-  apt install -y ./devkitpro.deb && \
-  rm devkitpro.deb
-RUN dkp-pacman -Syu 3ds-dev --noconfirm
+RUN wget \
+        https://github.com/n64decomp/qemu-irix/releases/download/v2.11-deb/qemu-irix-2.11.0-2169-g32ab296eef_amd64.deb \
+        -O qemu.deb && \
+    echo 8170f37cf03a08cc2d7c1c58f10d650ea0d158f711f6916da9364f6d8c85f741 qemu.deb | sha256sum --check && \
+    dpkg -i qemu.deb && \
+    rm qemu.deb
 
-RUN wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.17/makerom-v0.17-ubuntu_x86_64.zip \
-  -O makerom.zip && \
-  echo 976c17a78617e157083a8e342836d35c47a45940f9d0209ee8fd210a81ba7bc0  makerom.zip | sha256sum --check && \
-  unzip -d /opt/devkitpro/tools/bin/ makerom.zip && \
-  chmod +x /opt/devkitpro/tools/bin/makerom && \
-  rm makerom.zip
+RUN git clone --depth 1 https://github.com/emscripten-core/emsdk.git && \
+    ./emsdk/emsdk install latest && \
+    ./emsdk/emsdk activate latest
 
 RUN mkdir /sm64
 WORKDIR /sm64
+ENV PATH="/sm64/tools:/emsdk:/emsdk/upstream/emscripten:${PATH}"
 
-ENV PATH="/opt/devkitpro/tools/bin/:/sm64/tools:${PATH}"
-ENV DEVKITPRO=/opt/devkitpro
-ENV DEVKITARM=/opt/devkitpro/devkitARM
-ENV DEVKITPPC=/opt/devkitpro/devkitPPC
-
-CMD echo 'usage: docker run --rm --mount type=bind,source="$(pwd)",destination=/sm64 sm64 make VERSION=${VERSION:-us} -j4'
+CMD echo 'usage: docker run --rm --mount type=bind,source="$(pwd)",destination=/sm64 sm64 make VERSION=${VERSION:-us} -j4\n' \
+         'see https://github.com/n64decomp/sm64/blob/master/README.md for advanced usage'

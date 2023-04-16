@@ -1,5 +1,5 @@
-#ifndef MARIO_GEO_SWITCH_CASE_IDS_H
-#define MARIO_GEO_SWITCH_CASE_IDS_H
+#ifndef _MARIO_GEO_SWITCH_CASE_IDS_H
+#define _MARIO_GEO_SWITCH_CASE_IDS_H
 
 /* Mario Geo-Switch-Case IDs */
 
@@ -42,4 +42,5 @@ enum MarioGrabPosGSCId
     /*0x03*/ GRAB_POS_BOWSER
 };
 
-#endif // MARIO_GEO_SWITCH_CASE_IDS_H
+
+#endif /* _MARIO_GEO_SWITCH_CASE_IDS_H */
