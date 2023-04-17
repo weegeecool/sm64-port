@@ -1,4 +1,3 @@
-#include "macros.h"
 #include "audio_api.h"
 
 static bool audio_null_init(void) {
@@ -13,20 +12,16 @@ static int audio_null_get_desired_buffered(void) {
     return 0;
 }
 
-static void audio_null_play(UNUSED const uint8_t *buf, UNUSED size_t len) {
+static void audio_null_play(const uint8_t *buf, size_t len) {
 }
 
-#ifdef TARGET_N3DS
-static void audio_null_stop(void) {
+static void audio_null_shutdown(void) {
 }
-#endif
 
 struct AudioAPI audio_null = {
     audio_null_init,
     audio_null_buffered,
     audio_null_get_desired_buffered,
     audio_null_play,
-#ifdef TARGET_N3DS
-    audio_null_stop
-#endif
+    audio_null_shutdown
 };

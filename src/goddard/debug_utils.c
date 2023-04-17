@@ -1,9 +1,8 @@
-#include <PR/ultratypes.h>
+#include <ultra64.h>
 #include <stdarg.h>
-
-#include "debug_utils.h"
+#include <macros.h>
 #include "gd_types.h"
-#include "macros.h"
+#include "debug_utils.h"
 #include "renderer.h"
 
 // types

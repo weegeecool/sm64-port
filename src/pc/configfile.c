@@ -5,12 +5,11 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
-
-#ifdef TARGET_N3DS
-#include "3ds.h"
-#endif
+#include <SDL2/SDL.h>
 
 #include "configfile.h"
+#include "gfx/gfx_screen_config.h"
+#include "controller/controller_api.h"
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -18,6 +17,7 @@ enum ConfigOptionType {
     CONFIG_TYPE_BOOL,
     CONFIG_TYPE_UINT,
     CONFIG_TYPE_FLOAT,
+    CONFIG_TYPE_BIND,
 };
 
 struct ConfigOption {
@@ -33,60 +33,87 @@ struct ConfigOption {
 /*
  *Config options and default values
  */
-bool configFullscreen            = false;
 
-#ifndef TARGET_N3DS
-// Keyboard mappings (scancode values)
-unsigned int configKeyA          = 0x26;
-unsigned int configKeyB          = 0x33;
-unsigned int configKeyStart      = 0x39;
-unsigned int configKeyL          = 0xE1;
-unsigned int configKeyR          = 0x36;
-unsigned int configKeyZ          = 0x25;
-unsigned int configKeyCUp        = 0x148;
-unsigned int configKeyCDown      = 0x150;
-unsigned int configKeyCLeft      = 0x14B;
-unsigned int configKeyCRight     = 0x14D;
-unsigned int configKeyStickUp    = 0x11;
-unsigned int configKeyStickDown  = 0x1F;
-unsigned int configKeyStickLeft  = 0x1E;
-unsigned int configKeyStickRight = 0x20;
-#else
-unsigned int configKeyA          = KEY_A | KEY_Y;
-unsigned int configKeyB          = KEY_B | KEY_X;
-unsigned int configKeyStart      = KEY_START;
-unsigned int configKeyL          = KEY_SELECT;
-unsigned int configKeyR          = KEY_L;
-unsigned int configKeyZ          = KEY_R;
-unsigned int configKeyCUp        = KEY_DUP | KEY_CSTICK_UP;
-unsigned int configKeyCDown      = KEY_DDOWN | KEY_CSTICK_DOWN;
-unsigned int configKeyCLeft      = KEY_DLEFT | KEY_CSTICK_LEFT;
-unsigned int configKeyCRight     = KEY_DRIGHT | KEY_CSTICK_RIGHT;
-unsigned int configKeyStickUp    = 0;
-unsigned int configKeyStickDown  = 0;
-unsigned int configKeyStickLeft  = 0;
-unsigned int configKeyStickRight = 0;
+// Video/audio stuff
+ConfigWindow configWindow       = {
+    .x = SDL_WINDOWPOS_CENTERED,
+    .y = SDL_WINDOWPOS_CENTERED,
+    .w = DESIRED_SCREEN_WIDTH,
+    .h = DESIRED_SCREEN_HEIGHT,
+    .vsync = 1,
+    .reset = false,
+    .fullscreen = false,
+    .exiting_fullscreen = false,
+    .settings_changed = false,
+};
+unsigned int configFiltering    = 1;          // 0=force nearest, 1=linear, (TODO) 2=three-point
+unsigned int configMasterVolume = MAX_VOLUME; // 0 - MAX_VOLUME
+
+// Keyboard mappings (VK_ values, by default keyboard/gamepad/mouse)
+unsigned int configKeyA[MAX_BINDS]          = { 0x0026,   0x1000,     0x1103     };
+unsigned int configKeyB[MAX_BINDS]          = { 0x0033,   0x1002,     0x1101     };
+unsigned int configKeyStart[MAX_BINDS]      = { 0x0039,   0x1006,     VK_INVALID };
+unsigned int configKeyL[MAX_BINDS]          = { 0x0034,   0x1007,     0x1104     };
+unsigned int configKeyR[MAX_BINDS]          = { 0x0036,   0x100A,     0x1105     };
+unsigned int configKeyZ[MAX_BINDS]          = { 0x0025,   0x1009,     0x1102     };
+unsigned int configKeyCUp[MAX_BINDS]        = { 0x0148,   VK_INVALID, VK_INVALID };
+unsigned int configKeyCDown[MAX_BINDS]      = { 0x0150,   VK_INVALID, VK_INVALID };
+unsigned int configKeyCLeft[MAX_BINDS]      = { 0x014B,   VK_INVALID, VK_INVALID };
+unsigned int configKeyCRight[MAX_BINDS]     = { 0x014D,   VK_INVALID, VK_INVALID };
+unsigned int configKeyStickUp[MAX_BINDS]    = { 0x0011,   VK_INVALID, VK_INVALID };
+unsigned int configKeyStickDown[MAX_BINDS]  = { 0x001F,   VK_INVALID, VK_INVALID };
+unsigned int configKeyStickLeft[MAX_BINDS]  = { 0x001E,   VK_INVALID, VK_INVALID };
+unsigned int configKeyStickRight[MAX_BINDS] = { 0x0020,   VK_INVALID, VK_INVALID };
+
+#ifdef BETTERCAMERA
+// BetterCamera settings
+unsigned int configCameraXSens   = 50;
+unsigned int configCameraYSens   = 50;
+unsigned int configCameraAggr    = 0;
+unsigned int configCameraPan     = 0;
+unsigned int configCameraDegrade = 10; // 0 - 100%
+bool         configCameraInvertX = false;
+bool         configCameraInvertY = false;
+bool         configEnableCamera  = false;
+bool         configCameraMouse   = false;
 #endif
-
+unsigned int configSkipIntro     = 0;
 
 static const struct ConfigOption options[] = {
-    {.name = "fullscreen",     .type = CONFIG_TYPE_BOOL, .boolValue = &configFullscreen},
-    {.name = "key_a",          .type = CONFIG_TYPE_UINT, .uintValue = &configKeyA},
-    {.name = "key_b",          .type = CONFIG_TYPE_UINT, .uintValue = &configKeyB},
-    {.name = "key_start",      .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStart},
-    {.name = "key_l",          .type = CONFIG_TYPE_UINT, .uintValue = &configKeyL},
-    {.name = "key_r",          .type = CONFIG_TYPE_UINT, .uintValue = &configKeyR},
-    {.name = "key_z",          .type = CONFIG_TYPE_UINT, .uintValue = &configKeyZ},
-    {.name = "key_cup",        .type = CONFIG_TYPE_UINT, .uintValue = &configKeyCUp},
-    {.name = "key_cdown",      .type = CONFIG_TYPE_UINT, .uintValue = &configKeyCDown},
-    {.name = "key_cleft",      .type = CONFIG_TYPE_UINT, .uintValue = &configKeyCLeft},
-    {.name = "key_cright",     .type = CONFIG_TYPE_UINT, .uintValue = &configKeyCRight},
-#ifndef TARGET_N3DS
-    {.name = "key_stickup",    .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickUp},
-    {.name = "key_stickdown",  .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickDown},
-    {.name = "key_stickleft",  .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickLeft},
-    {.name = "key_stickright", .type = CONFIG_TYPE_UINT, .uintValue = &configKeyStickRight},
-#endif
+    {.name = "fullscreen",           .type = CONFIG_TYPE_BOOL, .boolValue = &configWindow.fullscreen},
+    {.name = "window_x",             .type = CONFIG_TYPE_UINT, .uintValue = &configWindow.x},
+    {.name = "window_y",             .type = CONFIG_TYPE_UINT, .uintValue = &configWindow.y},
+    {.name = "window_w",             .type = CONFIG_TYPE_UINT, .uintValue = &configWindow.w},
+    {.name = "window_h",             .type = CONFIG_TYPE_UINT, .uintValue = &configWindow.h},
+    {.name = "vsync",                .type = CONFIG_TYPE_UINT, .uintValue = &configWindow.vsync},
+    {.name = "texture_filtering",    .type = CONFIG_TYPE_UINT, .uintValue = &configFiltering},
+    {.name = "master_volume",        .type = CONFIG_TYPE_UINT, .uintValue = &configMasterVolume},
+    {.name = "key_a",                .type = CONFIG_TYPE_BIND, .uintValue = configKeyA},
+    {.name = "key_b",                .type = CONFIG_TYPE_BIND, .uintValue = configKeyB},
+    {.name = "key_start",            .type = CONFIG_TYPE_BIND, .uintValue = configKeyStart},
+    {.name = "key_l",                .type = CONFIG_TYPE_BIND, .uintValue = configKeyL},
+    {.name = "key_r",                .type = CONFIG_TYPE_BIND, .uintValue = configKeyR},
+    {.name = "key_z",                .type = CONFIG_TYPE_BIND, .uintValue = configKeyZ},
+    {.name = "key_cup",              .type = CONFIG_TYPE_BIND, .uintValue = configKeyCUp},
+    {.name = "key_cdown",            .type = CONFIG_TYPE_BIND, .uintValue = configKeyCDown},
+    {.name = "key_cleft",            .type = CONFIG_TYPE_BIND, .uintValue = configKeyCLeft},
+    {.name = "key_cright",           .type = CONFIG_TYPE_BIND, .uintValue = configKeyCRight},
+    {.name = "key_stickup",          .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickUp},
+    {.name = "key_stickdown",        .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickDown},
+    {.name = "key_stickleft",        .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickLeft},
+    {.name = "key_stickright",       .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickRight},
+    #ifdef BETTERCAMERA
+    {.name = "bettercam_enable",     .type = CONFIG_TYPE_BOOL, .boolValue = &configEnableCamera},
+    {.name = "bettercam_mouse_look", .type = CONFIG_TYPE_BOOL, .boolValue = &configCameraMouse},
+    {.name = "bettercam_invertx",    .type = CONFIG_TYPE_BOOL, .boolValue = &configCameraInvertX},
+    {.name = "bettercam_inverty",    .type = CONFIG_TYPE_BOOL, .boolValue = &configCameraInvertY},
+    {.name = "bettercam_xsens",      .type = CONFIG_TYPE_UINT, .uintValue = &configCameraXSens},
+    {.name = "bettercam_ysens",      .type = CONFIG_TYPE_UINT, .uintValue = &configCameraYSens},
+    {.name = "bettercam_aggression", .type = CONFIG_TYPE_UINT, .uintValue = &configCameraAggr},
+    {.name = "bettercam_pan_level",  .type = CONFIG_TYPE_UINT, .uintValue = &configCameraPan},
+    {.name = "bettercam_degrade",    .type = CONFIG_TYPE_UINT, .uintValue = &configCameraDegrade},
+    #endif
+    {.name = "skip_intro",           .type = CONFIG_TYPE_UINT, .uintValue = &configSkipIntro},    // Add this back!
 };
 
 // Reads an entire line from a file (excluding the newline character) and returns an allocated string
@@ -187,9 +214,13 @@ void configfile_load(const char *filename) {
 
         while (isspace(*p))
             p++;
+
+        if (!*p || *p == '#') // comment or empty line
+            continue;
+
         numTokens = tokenize_string(p, 2, tokens);
         if (numTokens != 0) {
-            if (numTokens == 2) {
+            if (numTokens >= 2) {
                 const struct ConfigOption *option = NULL;
 
                 for (unsigned int i = 0; i < ARRAY_LEN(options); i++) {
@@ -210,6 +241,10 @@ void configfile_load(const char *filename) {
                             break;
                         case CONFIG_TYPE_UINT:
                             sscanf(tokens[1], "%u", option->uintValue);
+                            break;
+                        case CONFIG_TYPE_BIND:
+                            for (int i = 0; i < MAX_BINDS && i < numTokens - 1; ++i)
+                                sscanf(tokens[i + 1], "%x", option->uintValue + i);
                             break;
                         case CONFIG_TYPE_FLOAT:
                             sscanf(tokens[1], "%f", option->floatValue);
@@ -252,6 +287,12 @@ void configfile_save(const char *filename) {
                 break;
             case CONFIG_TYPE_FLOAT:
                 fprintf(file, "%s %f\n", option->name, *option->floatValue);
+                break;
+            case CONFIG_TYPE_BIND:
+                fprintf(file, "%s ", option->name);
+                for (int i = 0; i < MAX_BINDS; ++i)
+                    fprintf(file, "%04x ", option->uintValue[i]);
+                fprintf(file, "\n");
                 break;
             default:
                 assert(0); // unknown type

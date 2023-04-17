@@ -12,14 +12,14 @@
 #define u8 __u8
 #define s8 __s8
 #include <3ds/types.h>
-#undef u64
-#undef s64
-#undef u32
-#undef vu32
-#undef vs32
-#undef s32
-#undef u16
-#undef s16
+#undef u64 
+#undef s64 
+#undef u32 
+#undef vu32 
+#undef vs32 
+#undef s32 
+#undef u16 
+#undef s16 
 #undef u8
 #undef s8
 
@@ -34,67 +34,35 @@
 
 #include "controller_api.h"
 
-#include "../configfile.h"
+#define DEADZONE 4960
 
-static int button_mapping[10][2];
+static bool init_ok;
 
-static void set_button_mapping(int index, int mask_n64, int mask_3ds)
-{
-    button_mapping[index][0] = mask_3ds;
-    button_mapping[index][1] = mask_n64;
+static void controller_3ds_init(void) {
+    
 }
 
-// From gfx_3ds_menu
-static bool is_inside_box(int pos_x, int pos_y, int x, int y, int width, int height)
-{
-    return pos_x >= x && pos_x <= (x+width) && pos_y >= y && pos_y <= (y+height);
-}
-
-static u32 controller_3ds_get_held(void)
-{
-    u32 res = 0;
+static void controller_3ds_read(OSContPad *pad) {
     hidScanInput();
     u32 kDown = keysHeld();
-    for (size_t i = 0; i < sizeof(button_mapping) / sizeof(button_mapping[0]); i++)
-    {
-        if (button_mapping[i][0] & kDown) {
-            res |= button_mapping[i][1];
-        }
-    }
-
-    touchPosition pos;
-    hidTouchRead(&pos);
-
-    if (is_inside_box(pos.px, pos.py, 170, 122, 64, 64))
-        res |= L_CBUTTONS;
-    if (is_inside_box(pos.px, pos.py, 245, 122, 64, 64))
-        res |= R_CBUTTONS;
-    if (is_inside_box(pos.px, pos.py, 207, 197, 64, 32))
-        res |= D_CBUTTONS;
-    if (is_inside_box(pos.px, pos.py, 207, 79, 64, 32))
-        res |= U_CBUTTONS;
-
-    return res;
-}
-
-static void controller_3ds_init(void)
-{
-    u32 i;
-    set_button_mapping(i++, A_BUTTON,     configKeyA); // n64 button => configured button
-    set_button_mapping(i++, B_BUTTON,     configKeyB);
-    set_button_mapping(i++, START_BUTTON, configKeyStart);
-    set_button_mapping(i++, L_TRIG,       configKeyL);
-    set_button_mapping(i++, R_TRIG,       configKeyR);
-    set_button_mapping(i++, Z_TRIG,       configKeyZ);
-    set_button_mapping(i++, U_CBUTTONS,   configKeyCUp);
-    set_button_mapping(i++, D_CBUTTONS,   configKeyCDown);
-    set_button_mapping(i++, L_CBUTTONS,   configKeyCLeft);
-    set_button_mapping(i++, R_CBUTTONS,   configKeyCRight);
-}
-
-static void controller_3ds_read(OSContPad *pad)
-{
-    pad->button = controller_3ds_get_held();
+    if (kDown & KEY_START)
+        pad->button |= START_BUTTON;
+    if (kDown & KEY_R)
+        pad->button |= Z_TRIG;
+    if (kDown & KEY_L)
+        pad->button |= R_TRIG;
+    if (kDown & KEY_A)
+        pad->button |= A_BUTTON;
+    if (kDown & KEY_B)
+        pad->button |= B_BUTTON;
+    if (kDown & (KEY_DLEFT | KEY_CSTICK_LEFT))
+        pad->button |= L_CBUTTONS;
+    if (kDown & (KEY_DRIGHT | KEY_CSTICK_RIGHT))
+        pad->button |= R_CBUTTONS;
+    if (kDown & (KEY_DUP | KEY_CSTICK_UP))
+        pad->button |= U_CBUTTONS;
+    if (kDown & (KEY_DDOWN | KEY_CSTICK_DOWN))
+        pad->button |= D_CBUTTONS;
 
     circlePosition pos;
     hidCircleRead(&pos);

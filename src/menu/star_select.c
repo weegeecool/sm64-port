@@ -1,24 +1,24 @@
-#include <PR/ultratypes.h>
+#include <ultra64.h>
 
+#include "sm64.h"
 #include "audio/external.h"
-#include "behavior_data.h"
-#include "engine/behavior_script.h"
-#include "engine/graph_node.h"
-#include "eu_translation.h"
-#include "game/area.h"
 #include "game/game_init.h"
+#include "game/memory.h"
+#include "game/area.h"
+#include "game/save_file.h"
+#include "game/object_helpers.h"
 #include "game/ingame_menu.h"
 #include "game/level_update.h"
-#include "game/memory.h"
-#include "game/object_helpers.h"
-#include "game/object_list_processor.h"
-#include "game/save_file.h"
 #include "game/segment2.h"
 #include "game/segment7.h"
-#include "sm64.h"
-#include "star_select.h"
+#include "game/object_list_processor.h"
+#include "engine/behavior_script.h"
+#include "engine/graph_node.h"
+#include "behavior_data.h"
 #include "text_strings.h"
-#include "prevent_bss_reordering.h"
+#include "star_select.h"
+#include "eu_translation.h"
+#include <prevent_bss_reordering.h>
 
 /**
  * @file star_select.c
@@ -302,6 +302,7 @@ void print_act_selector_strings(void) {
     }
     currLevelName = segmented_to_virtual(levelNameTbl[gCurrCourseNum - 1]);
 #endif
+
     // Print the coin highscore.
     gSPDisplayList(gDisplayListHead++, dl_rgba16_text_begin);
     gDPSetEnvColor(gDisplayListHead++, 255, 255, 255, 255);
@@ -365,7 +366,7 @@ void print_act_selector_strings(void) {
     }
 
     gSPDisplayList(gDisplayListHead++, dl_menu_ia8_text_end);
-}
+ }
 
 /**
  * Geo function that Print act selector strings.
@@ -377,16 +378,7 @@ Gfx *geo_act_selector_strings(s16 callContext, UNUSED struct GraphNode *node, UN
 Gfx *geo_act_selector_strings(s16 callContext, UNUSED struct GraphNode *node) {
 #endif
     if (callContext == GEO_CONTEXT_RENDER) {
-#ifdef TARGET_N3DS
-        gDPForceFlush(gDisplayListHead++);
-        gDPSet2d(gDisplayListHead++, 1);
-        gDPSetIod(gDisplayListHead++, iodStarSelect);
-#endif
         print_act_selector_strings();
-#ifdef TARGET_N3DS
-        gDPForceFlush(gDisplayListHead++);
-        gDPSet2d(gDisplayListHead++, 0);
-#endif
     }
     return NULL;
 }
@@ -402,10 +394,6 @@ s32 lvl_init_act_selector_values_and_stars(UNUSED s32 arg, UNUSED s32 unused) {
     sInitSelectedActNum = 0;
     sVisibleStars = 0;
     sActSelectorMenuTimer = 0;
-#ifdef NO_SEGMENTED_MEMORY
-    sSelectedActIndex = 0;
-    sSelectableStarIndex = 0;
-#endif
     sObtainedStars = save_file_get_course_star_count(gCurrSaveFileNum - 1, gCurrCourseNum - 1);
 
     // Don't count 100 coin star
@@ -421,7 +409,7 @@ s32 lvl_init_act_selector_values_and_stars(UNUSED s32 arg, UNUSED s32 unused) {
 
 /**
  * Loads act selector button actions with selected act value checks.
- * Also updates objects and returns act number selected after is chosen.
+ * Also updates objects and returns act number selected after is choosen.
  */
 s32 lvl_update_obj_and_load_act_button_actions(UNUSED s32 arg, UNUSED s32 unused) {
     if (sActSelectorMenuTimer >= 11) {
