@@ -1,9 +1,9 @@
 #include <ultra64.h>
+#include <macros.h>
 
-#include "data.h"
-#include "external.h"
-#include "heap.h"
 #include "load.h"
+#include "heap.h"
+#include "data.h"
 #include "seqplayer.h"
 
 #define ALIGN16(val) (((val) + 0xF) & ~0xF)
@@ -868,7 +868,6 @@ void load_sequence_internal(u32 player, u32 seqId, s32 loadAsync) {
     seqPlayer->scriptState.pc = sequenceData;
 }
 
-// (void) must be omitted from parameters
 void audio_init() {
 #ifdef VERSION_EU
     UNUSED s8 pad[16];
@@ -876,13 +875,13 @@ void audio_init() {
     UNUSED s8 pad[32];
     u8 buf[0x10];
 #endif
-    s32 i, j, UNUSED k;
+    s32 i, j, k;
     UNUSED s32 lim1; // lim1 unused in EU
 #ifdef VERSION_EU
     u8 buf[0x10];
     s32 UNUSED lim2, lim3;
 #else
-    s32 lim2, UNUSED lim3;
+    s32 lim2, lim3;
 #endif
     u32 size;
     UNUSED u64 *ptr64;
@@ -903,8 +902,7 @@ void audio_init() {
         ((u64 *) gAudioHeap)[i] = 0;
     }
 
-#ifdef TARGET_N64
-    // It seems boot.s doesn't clear the .bss area for audio, so do it here.
+#ifndef AVOID_UB
     i = 0;
     lim3 = ((uintptr_t) &gAudioGlobalsEndMarker - (uintptr_t) &gAudioGlobalsStartMarker) / 8;
     ptr64 = &gAudioGlobalsStartMarker - 1;
@@ -913,20 +911,16 @@ void audio_init() {
         ptr64[i] = 0;
     }
 #endif
-
 #else
     for (i = 0; i < gAudioHeapSize / 8; i++) {
         ((u64 *) gAudioHeap)[i] = 0;
     }
 
-#ifdef TARGET_N64
-    // It seems boot.s doesn't clear the .bss area for audio, so do it here.
     lim3 = ((uintptr_t) &gAudioGlobalsEndMarker - (uintptr_t) &gAudioGlobalsStartMarker) / 8;
     ptr64 = &gAudioGlobalsStartMarker;
     for (k = lim3; k >= 0; k--) {
         *ptr64++ = 0;
     }
-#endif
 
     D_EU_802298D0 = 20.03042f;
     gRefreshRate = 50;
@@ -1006,9 +1000,10 @@ void audio_init() {
     alSeqFileNew(gAlTbl, gSoundDataRaw);
 
     // Load bank sets for each sequence (assets/bank_sets.s)
-    gAlBankSets = soundAlloc(&gAudioInitPool, 0xA0);
-    audio_dma_copy_immediate((uintptr_t) gBankSetsData, gAlBankSets, 0xA0); // gBankSetsData is only 160 bytes
+    gAlBankSets = soundAlloc(&gAudioInitPool, 0x100);
+    audio_dma_copy_immediate((uintptr_t) gBankSetsData, gAlBankSets, 0x100);
 
     init_sequence_players();
     gAudioLoadLock = AUDIO_LOCK_NOT_LOADING;
 }
+

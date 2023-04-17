@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <macros.h>
 
 #include "effects.h"
 #include "load.h"
